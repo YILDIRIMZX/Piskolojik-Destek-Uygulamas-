@@ -64,6 +64,7 @@ export function exportMarkdown(v: Vault) {
 export function exportBackup(v: Vault) {
   const { apiKey: _omit, ...rest } = v
   void _omit
+  rest.settings = { ...rest.settings, azureKey: undefined }
   const name = `seans-yedek-${new Date().toISOString().slice(0, 10)}.json`
   return shareOrDownload([new File([JSON.stringify(rest, null, 2)], name, { type: 'application/json' })])
 }

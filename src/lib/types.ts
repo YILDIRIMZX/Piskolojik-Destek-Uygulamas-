@@ -70,7 +70,14 @@ export interface Settings {
   inAppSpeech: boolean
   /** Chosen speech synthesis voice; empty means the best Turkish voice available. */
   voiceURI?: string
+  /** Which engine reads replies aloud. */
+  tts?: 'device' | 'azure'
+  azureKey?: string
+  azureRegion?: string
+  azureVoice?: AzureVoice
 }
+
+export type AzureVoice = 'tr-TR-EmelNeural' | 'tr-TR-AhmetNeural'
 
 export interface Vault {
   version: 1

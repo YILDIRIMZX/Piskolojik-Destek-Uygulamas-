@@ -176,7 +176,7 @@ const pickVoice = (uri?: string) => {
   return voices.find((v) => v.voiceURI === uri) ?? voices[0] ?? null
 }
 
-const plain = (md: string) =>
+export const plain = (md: string) =>
   md
     .replace(/[*_`#>]/g, '')
     .replace(/\[(.*?)\]\(.*?\)/g, '$1')

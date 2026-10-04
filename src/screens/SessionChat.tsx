@@ -6,7 +6,8 @@ import { KEYBOARD_HINT } from '../components/MicButton'
 import { Button, Sheet, cx } from '../components/ui'
 import { describeError } from '../lib/claude'
 import { renderMarkdown } from '../lib/markdown'
-import { canSpeak, speak, stopSpeaking, useDictation } from '../lib/speech'
+import { canSpeak, useDictation } from '../lib/speech'
+import { azureReady, primeAudio, say, stopAll } from '../lib/voice'
 import { flush, update, useV } from '../lib/store'
 import { useNav } from '../nav'
 import { fmtUsd } from './Sessions'
@@ -31,7 +32,9 @@ export function SessionChat({ id }: { id: string }) {
   const draftRef = useRef('')
   draftRef.current = draft
 
-  const { readAloud, handsFree, speechRate, voiceURI } = v.settings
+  const { readAloud, handsFree } = v.settings
+  const settingsRef = useRef(v.settings)
+  settingsRef.current = v.settings
   const setSetting = (patch: Partial<typeof v.settings>) => update((x) => ({ ...x, settings: { ...x.settings, ...patch } }))
 
   // The 50-minute clock only runs while this screen is visible.
@@ -67,10 +70,10 @@ export function SessionChat({ id }: { id: string }) {
   const afterReply = useCallback(
     async (text: string | undefined) => {
       if (!text) return
-      if (readAloud || handsFree) await speak(text, speechRate, voiceURI)
+      if (readAloud || handsFree) await say(text, settingsRef.current)
       if (handsFree && dictation.supported) dictation.start('')
     },
-    [readAloud, handsFree, speechRate, voiceURI, dictation],
+    [readAloud, handsFree, dictation],
   )
 
   const run = useCallback(
@@ -114,7 +117,8 @@ export function SessionChat({ id }: { id: string }) {
     const t = text.trim()
     if (!t || busy) return
     dictation.stop()
-    stopSpeaking()
+    stopAll()
+    primeAudio()
     setDraft('')
     await run((onText, signal) => send(id, t, { onText, signal }))
   }
@@ -155,7 +159,7 @@ export function SessionChat({ id }: { id: string }) {
     <div className="flex h-[100dvh] flex-col">
       <header className="glass pt-safe z-20 border-b border-line">
         <div className="mx-auto flex h-12 max-w-xl items-center gap-2 px-3">
-          <button onClick={() => { dictation.stop(); stopSpeaking(); nav.back() }} aria-label="Geri" className="grid size-9 place-items-center rounded-full text-accent">
+          <button onClick={() => { dictation.stop(); stopAll(); nav.back() }} aria-label="Geri" className="grid size-9 place-items-center rounded-full text-accent">
             <CaretLeft size={22} weight="bold" />
           </button>
           <div className="min-w-0 flex-1">
@@ -177,7 +181,7 @@ export function SessionChat({ id }: { id: string }) {
       <div ref={scroller} className="no-scrollbar flex-1 overflow-y-auto">
         <div className="mx-auto max-w-xl px-4 pt-5 pb-6">
           {visible.map((m) => (
-            <Bubble key={m.id} role={m.role} text={m.text} onSpeak={canSpeak() ? () => void speak(m.text, speechRate, voiceURI) : undefined} />
+            <Bubble key={m.id} role={m.role} text={m.text} onSpeak={canSpeak() || azureReady(v.settings) ? () => { primeAudio(); void say(m.text, v.settings) } : undefined} />
           ))}
           {streaming !== null && (streaming ? <Bubble role="assistant" text={streaming} live /> : <Thinking />)}
 
@@ -224,7 +228,7 @@ export function SessionChat({ id }: { id: string }) {
         <footer className="glass pb-safe z-20 border-t border-line">
           <div className="mx-auto max-w-xl px-3 pt-2.5">
             <div className="mb-2 flex items-center gap-2">
-              <Chip on={readAloud} onClick={() => setSetting({ readAloud: !readAloud })} label="Sesli oku">
+              <Chip on={readAloud} onClick={() => { primeAudio(); setSetting({ readAloud: !readAloud }) }} label="Sesli oku">
                 {readAloud ? <SpeakerHigh size={15} weight="bold" /> : <SpeakerSlash size={15} weight="bold" />}
               </Chip>
               {dictation.supported && (
@@ -255,7 +259,7 @@ export function SessionChat({ id }: { id: string }) {
                     setKbHint(true)
                   } else if (dictation.listening) dictation.stop()
                   else {
-                    stopSpeaking()
+                    stopAll()
                     dictation.start(draft)
                   }
                 }}
