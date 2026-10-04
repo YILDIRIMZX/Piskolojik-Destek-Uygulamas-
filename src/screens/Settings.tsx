@@ -4,7 +4,7 @@ import { PIN_LENGTH, PinPad } from '../components/PinPad'
 import { Button, Field, Group, Row, Screen, Segmented, Sheet, Toggle, inputClass } from '../components/ui'
 import { checkKey, describeError } from '../lib/claude'
 import { exportBackup, exportMarkdown, importMarkdownFiles, mergeReports, readBackup } from '../lib/files'
-import { canRecognize, canSpeak, speak } from '../lib/speech'
+import { canRecognize, canSpeak, isIOSStandalone, speak } from '../lib/speech'
 import { changePin, lock, update, useV, wipe } from '../lib/store'
 import type { ModelId } from '../lib/types'
 import { useNav } from '../nav'
@@ -76,8 +76,20 @@ export function Settings() {
           hint={canSpeak() ? undefined : 'Bu cihazda sesli okuma yok.'}
         />
         <Toggle
-          checked={v.settings.handsFree}
-          onChange={(handsFree) => setSettings({ handsFree })}
+          checked={v.settings.inAppSpeech}
+          onChange={(inAppSpeech) => setSettings({ inAppSpeech, handsFree: inAppSpeech && v.settings.handsFree })}
+          label="Uygulama içi konuşma tanıma"
+          hint={
+            !canRecognize()
+              ? 'Bu cihazda yok. Klavyedeki mikrofon kullanılır.'
+              : isIOSStandalone()
+                ? 'Deneysel. iPhone ana ekran modunda takılabilir. Kapalıyken klavyedeki mikrofon kullanılır.'
+                : 'Kapalıyken klavyedeki mikrofon kullanılır.'
+          }
+        />
+        <Toggle
+          checked={v.settings.handsFree && v.settings.inAppSpeech}
+          onChange={(handsFree) => setSettings({ handsFree, inAppSpeech: handsFree || v.settings.inAppSpeech })}
           label="Eller serbest"
           hint={canRecognize() ? 'Sustuğunda mesaj gönderilir, cevap okunur, sonra yine dinlenir.' : 'Bu cihazda konuşma tanıma yok.'}
         />

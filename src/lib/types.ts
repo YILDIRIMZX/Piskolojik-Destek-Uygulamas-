@@ -1,3 +1,5 @@
+import { isIOSStandalone } from './speech'
+
 export type ModelId = 'claude-sonnet-5-5' | 'claude-opus-5-5'
 
 export interface Usage {
@@ -64,6 +66,8 @@ export interface Settings {
   readAloud: boolean
   handsFree: boolean
   speechRate: number
+  /** Safari's own speech recognition. Off by default in iPhone home-screen mode, where keyboard dictation is used. */
+  inAppSpeech: boolean
 }
 
 export interface Vault {
@@ -89,7 +93,7 @@ export const newVault = (): Vault => ({
   sessions: [],
   journal: [],
   cycle: [],
-  settings: { model: 'claude-sonnet-5-5', readAloud: false, handsFree: false, speechRate: 1 },
+  settings: { model: 'claude-sonnet-5-5', readAloud: false, handsFree: false, speechRate: 1, inAppSpeech: !isIOSStandalone() },
 })
 
 export const uid = () => crypto.randomUUID()

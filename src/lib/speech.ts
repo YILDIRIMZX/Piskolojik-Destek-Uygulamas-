@@ -33,10 +33,19 @@ export const canSpeak = () => 'speechSynthesis' in window
  * Dictation in Turkish. `base` is the text already in the field; speech is appended to it.
  * With `autoSendAfterMs`, a pause after speech calls `onPause` (used by hands-free mode).
  */
+/** iPhone home-screen web apps: Safari's in-app speech recognition is unreliable there. */
+export const isIOSStandalone = () =>
+  /iphone|ipad|ipod/i.test(navigator.userAgent) &&
+  ((navigator as unknown as { standalone?: boolean }).standalone === true || matchMedia('(display-mode: standalone)').matches)
+
+const START_TIMEOUT_MS = 4000
+
 export function useDictation(opts: {
   onText: (text: string) => void
   onPause?: () => void
   autoSendAfterMs?: number
+  /** In-app recognition switched on in settings. When off, callers fall back to keyboard dictation. */
+  enabled: boolean
 }) {
   const [listening, setListening] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -44,29 +53,60 @@ export function useDictation(opts: {
   const base = useRef('')
   const finals = useRef('')
   const pauseTimer = useRef<number | undefined>(undefined)
+  const startTimer = useRef<number | undefined>(undefined)
   const optsRef = useRef(opts)
   optsRef.current = opts
 
-  const stop = useCallback(() => {
+  /** Always returns the UI to idle, even if the engine never reports back. */
+  const reset = useCallback(() => {
     clearTimeout(pauseTimer.current)
-    rec.current?.stop()
+    clearTimeout(startTimer.current)
+    const r = rec.current
+    rec.current = null
+    if (r) {
+      r.onresult = r.onerror = r.onend = null
+      try {
+        r.abort()
+      } catch {
+        /* already stopped */
+      }
+    }
+    setListening(false)
   }, [])
 
-  const start = useCallback((current: string) => {
-    const C = Ctor()
-    if (!C) {
-      setError('Bu cihazda konuşma tanıma yok. Klavyedeki mikrofonu kullanabilirsin.')
-      return
+  const stop = useCallback(() => {
+    const r = rec.current
+    if (!r) return setListening(false)
+    try {
+      r.stop()
+    } catch {
+      /* ignore */
     }
-    window.speechSynthesis?.cancel()
-    setError(null)
-    base.current = current ? current.replace(/\s*$/, ' ') : ''
-    finals.current = ''
-    const r = new C()
-    r.lang = 'tr-TR'
-    r.continuous = true
-    r.interimResults = true
-    r.onresult = (e) => {
+    // If the engine doesn't end on its own shortly, force it.
+    window.setTimeout(() => {
+      if (rec.current === r) reset()
+    }, 800)
+  }, [reset])
+
+  const start = useCallback(
+    (current: string) => {
+      const C = Ctor()
+      if (!C) {
+        setError('Bu cihazda konuşma tanıma yok. Klavyedeki mikrofonu kullanabilirsin.')
+        return
+      }
+      reset()
+      window.speechSynthesis?.cancel()
+      setError(null)
+      base.current = current ? current.replace(/\s*$/, ' ') : ''
+      finals.current = ''
+      const r = new C()
+      r.lang = 'tr-TR'
+      r.continuous = true
+      r.interimResults = true
+      ;(r as unknown as { onstart: (() => void) | null }).onstart = () => clearTimeout(startTimer.current)
+      r.onresult = (e) => {
+        clearTimeout(startTimer.current)
       let interim = ''
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const res = e.results[i]
@@ -83,23 +123,38 @@ export function useDictation(opts: {
         }, ms)
       }
     }
-    r.onerror = (e) => {
-      if (e.error === 'not-allowed' || e.error === 'service-not-allowed')
-        setError('Mikrofon izni verilmedi. Ayarlar > Safari > Mikrofon bölümünden izin verebilirsin.')
-      else if (e.error !== 'no-speech' && e.error !== 'aborted') setError('Ses anlaşılamadı, tekrar dene.')
-    }
-    r.onend = () => {
-      setListening(false)
-      rec.current = null
-    }
-    rec.current = r
-    r.start()
-    setListening(true)
-  }, [])
+      r.onerror = (e) => {
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed')
+          setError('Mikrofon izni verilmedi ya da bu modda kullanılamıyor. Klavyedeki mikrofonu kullanabilirsin.')
+        else if (e.error !== 'no-speech' && e.error !== 'aborted') setError('Ses anlaşılamadı, tekrar dene.')
+        reset()
+      }
+      r.onend = () => {
+        if (rec.current === r) reset()
+      }
+      rec.current = r
+      try {
+        r.start()
+      } catch {
+        reset()
+        setError('Konuşma tanıma başlatılamadı. Klavyedeki mikrofonu kullanabilirsin.')
+        return
+      }
+      setListening(true)
+      // Some iOS modes never start and never report an error. Give up after a few seconds.
+      startTimer.current = window.setTimeout(() => {
+        if (rec.current === r && !finals.current) {
+          reset()
+          setError('Konuşma tanıma yanıt vermedi. Klavyedeki mikrofonu kullanabilirsin.')
+        }
+      }, START_TIMEOUT_MS)
+    },
+    [reset],
+  )
 
-  useEffect(() => () => rec.current?.abort(), [])
+  useEffect(() => reset, [reset])
 
-  return { listening, start, stop, error, supported: canRecognize() }
+  return { listening, start, stop, error, supported: opts.enabled && canRecognize() }
 }
 
 let cachedVoice: SpeechSynthesisVoice | null | undefined

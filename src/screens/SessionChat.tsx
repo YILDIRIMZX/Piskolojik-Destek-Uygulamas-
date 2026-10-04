@@ -2,6 +2,7 @@ import { ArrowUp, CaretLeft, Headphones, Microphone, SpeakerHigh, SpeakerSlash, 
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { EmergencyButton } from '../components/Emergency'
+import { KEYBOARD_HINT } from '../components/MicButton'
 import { Button, Sheet, cx } from '../components/ui'
 import { describeError } from '../lib/claude'
 import { renderMarkdown } from '../lib/markdown'
@@ -59,7 +60,9 @@ export function SessionChat({ id }: { id: string }) {
     onPause: () => {
       if (draftRef.current.trim()) void submit(draftRef.current)
     },
+    enabled: v.settings.inAppSpeech,
   })
+  const [kbHint, setKbHint] = useState(false)
 
   const afterReply = useCallback(
     async (text: string | undefined) => {
@@ -245,19 +248,26 @@ export function SessionChat({ id }: { id: string }) {
                   className="no-scrollbar max-h-40 w-full resize-none bg-transparent text-[16px] leading-snug outline-none placeholder:text-muted [field-sizing:content]"
                 />
               </div>
-              {dictation.supported && (
-                <button
-                  onClick={() => (dictation.listening ? dictation.stop() : (stopSpeaking(), dictation.start(draft)))}
-                  aria-label={dictation.listening ? 'Dinlemeyi durdur' : 'Konuşarak yaz'}
-                  className={cx(
-                    'relative grid size-11 shrink-0 place-items-center rounded-full transition-colors active:scale-90',
-                    dictation.listening ? 'bg-danger text-white' : 'bg-accent-soft text-accent',
-                  )}
-                >
-                  {dictation.listening && <span className="absolute inset-0 animate-ping rounded-full bg-danger/35" />}
-                  {dictation.listening ? <Stop size={18} weight="fill" /> : <Microphone size={21} weight="bold" />}
-                </button>
-              )}
+              <button
+                onClick={() => {
+                  if (!dictation.supported) {
+                    inputRef.current?.focus()
+                    setKbHint(true)
+                  } else if (dictation.listening) dictation.stop()
+                  else {
+                    stopSpeaking()
+                    dictation.start(draft)
+                  }
+                }}
+                aria-label={dictation.listening ? 'Dinlemeyi durdur' : 'Konuşarak yaz'}
+                className={cx(
+                  'relative grid size-11 shrink-0 place-items-center rounded-full transition-colors active:scale-90',
+                  dictation.listening ? 'bg-danger text-white' : 'bg-accent-soft text-accent',
+                )}
+              >
+                {dictation.listening && <span className="pointer-events-none absolute inset-0 animate-ping rounded-full bg-danger/35" />}
+                {dictation.listening ? <Stop size={18} weight="fill" /> : <Microphone size={21} weight="bold" />}
+              </button>
               <button
                 onClick={() => void submit(draft)}
                 disabled={!draft.trim() || busy}
@@ -268,6 +278,7 @@ export function SessionChat({ id }: { id: string }) {
               </button>
             </div>
             {dictation.error && <p className="mt-1.5 text-[12.5px] text-danger">{dictation.error}</p>}
+            {!dictation.error && kbHint && !dictation.supported && <p className="mt-1.5 text-[12.5px] text-muted">{KEYBOARD_HINT}</p>}
           </div>
         </footer>
       )}
