@@ -1,10 +1,10 @@
-import { DownloadSimple, Export, FileArrowUp, Key, LockKey, Password, SpeakerHigh, Trash, UploadSimple } from '@phosphor-icons/react'
+import { Check, DownloadSimple, Export, FileArrowUp, Key, LockKey, Password, Trash, UploadSimple } from '@phosphor-icons/react'
 import { useEffect, useState } from 'react'
 import { PIN_LENGTH, PinPad } from '../components/PinPad'
 import { Button, Field, Group, Row, Screen, Segmented, Sheet, Toggle, inputClass } from '../components/ui'
 import { checkKey, describeError } from '../lib/claude'
 import { exportBackup, exportMarkdown, importMarkdownFiles, mergeReports, readBackup } from '../lib/files'
-import { canRecognize, canSpeak, isIOSStandalone, speak } from '../lib/speech'
+import { canRecognize, canSpeak, isIOSStandalone, speak, turkishVoices, voiceQuality } from '../lib/speech'
 import { changePin, lock, update, useV, wipe } from '../lib/store'
 import type { ModelId } from '../lib/types'
 import { useNav } from '../nav'
@@ -105,12 +105,7 @@ export function Settings() {
             ]}
           />
         </div>
-        <Row
-          icon={<SpeakerHigh size={18} weight="bold" />}
-          title="Sesi dene"
-          sub="Daha doğal bir ses için iPhone Ayarlar > Erişilebilirlik > Seslendirilen İçerik > Sesler > Türkçe"
-          onClick={() => void speak('Merhaba. Bugün nasılsın? Hazır olduğunda başlayabiliriz.', v.settings.speechRate)}
-        />
+        <VoicePicker />
       </Group>
 
       <Group title="Veriler">
@@ -259,5 +254,55 @@ function PinSheet({ open, onClose, onDone }: { open: boolean; onClose: () => voi
         />
       </div>
     </Sheet>
+  )
+}
+
+const SAMPLE = 'Merhaba. Bugün nasılsın? Hazır olduğunda başlayabiliriz.'
+
+function VoicePicker() {
+  const v = useV()
+  const [voices, setVoices] = useState(turkishVoices)
+  useEffect(() => {
+    if (!canSpeak()) return
+    const load = () => setVoices(turkishVoices())
+    window.speechSynthesis.addEventListener('voiceschanged', load)
+    return () => window.speechSynthesis.removeEventListener('voiceschanged', load)
+  }, [])
+  const current = voices.find((x) => x.voiceURI === v.settings.voiceURI) ?? voices[0]
+  const choose = (uri: string) => {
+    update((x) => ({ ...x, settings: { ...x.settings, voiceURI: uri } }))
+    void speak(SAMPLE, v.settings.speechRate, uri)
+  }
+  const hasEnhanced = voices.some((x) => voiceQuality(x) === 'Gelişmiş')
+  return (
+    <div className="py-3.5">
+      <p className="mb-1 text-[15px]">Ses</p>
+      <p className="mb-2 text-[13px] text-muted">Dokununca seçilir ve örnek cümleyi okur.</p>
+      {voices.length === 0 ? (
+        <p className="text-[14px] text-muted">Bu cihazda Türkçe ses bulunamadı.</p>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          {voices.map((x) => (
+            <button
+              key={x.voiceURI}
+              onClick={() => choose(x.voiceURI)}
+              className="flex items-center justify-between rounded-field bg-surface-2 px-3.5 py-2.5 text-left active:opacity-70"
+            >
+              <span>
+                <span className="block text-[15px]">{x.name}</span>
+                <span className="block text-[12.5px] text-muted">{voiceQuality(x)}</span>
+              </span>
+              {current?.voiceURI === x.voiceURI && <Check size={18} weight="bold" className="text-accent" />}
+            </button>
+          ))}
+        </div>
+      )}
+      {!hasEnhanced && (
+        <p className="mt-3 rounded-field bg-accent-soft p-3 text-[13.5px] leading-snug text-accent-deep">
+          Daha doğal bir ses için iPhone Ayarlar &gt; Erişilebilirlik &gt; Seslendirilen İçerik &gt; Sesler &gt; Türkçe bölümünden
+          "Gelişmiş" bir sesi indir. Sonra uygulamayı kapatıp yeniden aç.
+        </p>
+      )}
+    </div>
   )
 }

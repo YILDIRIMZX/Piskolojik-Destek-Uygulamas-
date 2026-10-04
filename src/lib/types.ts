@@ -68,6 +68,8 @@ export interface Settings {
   speechRate: number
   /** Safari's own speech recognition. Off by default in iPhone home-screen mode, where keyboard dictation is used. */
   inAppSpeech: boolean
+  /** Chosen speech synthesis voice; empty means the best Turkish voice available. */
+  voiceURI?: string
 }
 
 export interface Vault {
