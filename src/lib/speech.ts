@@ -157,14 +157,23 @@ export function useDictation(opts: {
   return { listening, start, stop, error, supported: opts.enabled && canRecognize() }
 }
 
-let cachedVoice: SpeechSynthesisVoice | null | undefined
+const isTurkish = (v: SpeechSynthesisVoice) => v.lang.toLowerCase().replace('_', '-').startsWith('tr')
+const isEnhanced = (v: SpeechSynthesisVoice) => /premium|enhanced|geliş|siri/i.test(`${v.name} ${v.voiceURI}`)
 
-const turkishVoice = () => {
-  if (cachedVoice !== undefined && cachedVoice !== null) return cachedVoice
-  const voices = window.speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().startsWith('tr'))
-  // Prefer enhanced/premium voices when the user has downloaded them.
-  cachedVoice = voices.find((v) => /premium|enhanced|geliş/i.test(v.name)) ?? voices[0] ?? null
-  return cachedVoice
+/** Turkish voices on this device, best quality first. Voices can load late, so callers may re-query. */
+export function turkishVoices(): SpeechSynthesisVoice[] {
+  if (!canSpeak()) return []
+  return window.speechSynthesis
+    .getVoices()
+    .filter(isTurkish)
+    .sort((a, b) => Number(isEnhanced(b)) - Number(isEnhanced(a)))
+}
+
+export const voiceQuality = (v: SpeechSynthesisVoice) => (isEnhanced(v) ? 'Gelişmiş' : 'Standart')
+
+const pickVoice = (uri?: string) => {
+  const voices = turkishVoices()
+  return voices.find((v) => v.voiceURI === uri) ?? voices[0] ?? null
 }
 
 const plain = (md: string) =>
@@ -174,14 +183,14 @@ const plain = (md: string) =>
     .replace(/\s+/g, ' ')
     .trim()
 
-export function speak(text: string, rate = 1): Promise<void> {
+export function speak(text: string, rate = 1, voiceURI?: string): Promise<void> {
   return new Promise((resolve) => {
     if (!canSpeak()) return resolve()
     window.speechSynthesis.cancel()
     const u = new SpeechSynthesisUtterance(plain(text))
     u.lang = 'tr-TR'
     u.rate = rate
-    const v = turkishVoice()
+    const v = pickVoice(voiceURI)
     if (v) u.voice = v
     u.onend = () => resolve()
     u.onerror = () => resolve()

@@ -31,7 +31,7 @@ export function SessionChat({ id }: { id: string }) {
   const draftRef = useRef('')
   draftRef.current = draft
 
-  const { readAloud, handsFree, speechRate } = v.settings
+  const { readAloud, handsFree, speechRate, voiceURI } = v.settings
   const setSetting = (patch: Partial<typeof v.settings>) => update((x) => ({ ...x, settings: { ...x.settings, ...patch } }))
 
   // The 50-minute clock only runs while this screen is visible.
@@ -67,10 +67,10 @@ export function SessionChat({ id }: { id: string }) {
   const afterReply = useCallback(
     async (text: string | undefined) => {
       if (!text) return
-      if (readAloud || handsFree) await speak(text, speechRate)
+      if (readAloud || handsFree) await speak(text, speechRate, voiceURI)
       if (handsFree && dictation.supported) dictation.start('')
     },
-    [readAloud, handsFree, speechRate, dictation],
+    [readAloud, handsFree, speechRate, voiceURI, dictation],
   )
 
   const run = useCallback(
@@ -177,7 +177,7 @@ export function SessionChat({ id }: { id: string }) {
       <div ref={scroller} className="no-scrollbar flex-1 overflow-y-auto">
         <div className="mx-auto max-w-xl px-4 pt-5 pb-6">
           {visible.map((m) => (
-            <Bubble key={m.id} role={m.role} text={m.text} onSpeak={canSpeak() ? () => void speak(m.text, speechRate) : undefined} />
+            <Bubble key={m.id} role={m.role} text={m.text} onSpeak={canSpeak() ? () => void speak(m.text, speechRate, voiceURI) : undefined} />
           ))}
           {streaming !== null && (streaming ? <Bubble role="assistant" text={streaming} live /> : <Thinking />)}
 
