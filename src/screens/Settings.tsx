@@ -6,7 +6,8 @@ import { checkKey, describeError } from '../lib/claude'
 import { exportBackup, exportMarkdown, importMarkdownFiles, mergeReports, readBackup } from '../lib/files'
 import { canRecognize, canSpeak, isIOSStandalone, speak, turkishVoices, voiceQuality } from '../lib/speech'
 import { changePin, lock, update, useV, wipe } from '../lib/store'
-import type { ModelId } from '../lib/types'
+import type { AzureVoice, ModelId } from '../lib/types'
+import { AzureError, azureAudio, primeAudio, say } from '../lib/voice'
 import { useNav } from '../nav'
 
 export function Settings() {
@@ -105,7 +106,7 @@ export function Settings() {
             ]}
           />
         </div>
-        <VoicePicker />
+        <VoiceEngine />
       </Group>
 
       <Group title="Veriler">
@@ -303,6 +304,109 @@ function VoicePicker() {
           "Gelişmiş" bir sesi indir. Sonra uygulamayı kapatıp yeniden aç.
         </p>
       )}
+    </div>
+  )
+}
+
+function VoiceEngine() {
+  const v = useV()
+  const engine = v.settings.tts ?? 'device'
+  return (
+    <div className="py-3.5">
+      <p className="mb-2 text-[15px]">Ses motoru</p>
+      <Segmented<'device' | 'azure'>
+        value={engine}
+        onChange={(tts) => update((x) => ({ ...x, settings: { ...x.settings, tts } }))}
+        options={[
+          { value: 'device', label: 'iPhone sesi' },
+          { value: 'azure', label: 'Azure (doğal)' },
+        ]}
+      />
+      <div className="mt-3">{engine === 'azure' ? <AzureSettings /> : <VoicePicker />}</div>
+    </div>
+  )
+}
+
+const AZURE_VOICES: { value: AzureVoice; label: string }[] = [
+  { value: 'tr-TR-EmelNeural', label: 'Emel (kadın)' },
+  { value: 'tr-TR-AhmetNeural', label: 'Ahmet (erkek)' },
+]
+
+function AzureSettings() {
+  const v = useV()
+  const [key, setKey] = useState('')
+  const [region, setRegion] = useState(v.settings.azureRegion ?? '')
+  const [state, setState] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle')
+  const [error, setError] = useState('')
+  const voice = v.settings.azureVoice ?? 'tr-TR-EmelNeural'
+  const saved = !!v.settings.azureKey
+
+  const test = async () => {
+    primeAudio()
+    setState('testing')
+    const k = key.trim() || v.settings.azureKey || ''
+    const r = region.trim().toLowerCase().replace(/\s+/g, '')
+    try {
+      await azureAudio('Merhaba.', { key: k, region: r, voice, rate: 1 })
+      update((x) => ({ ...x, settings: { ...x.settings, azureKey: k, azureRegion: r } }))
+      setKey('')
+      setState('ok')
+      void say(SAMPLE, { ...v.settings, tts: 'azure', azureKey: k, azureRegion: r })
+    } catch (e) {
+      setState('error')
+      setError(e instanceof AzureError ? e.message : 'Bağlanılamadı.')
+    }
+  }
+
+  const setVoice = (azureVoice: AzureVoice) => {
+    update((x) => ({ ...x, settings: { ...x.settings, azureVoice } }))
+    if (saved) {
+      primeAudio()
+      void say(SAMPLE, { ...v.settings, azureVoice })
+    }
+  }
+
+  return (
+    <div>
+      <Segmented<AzureVoice> value={voice} onChange={setVoice} options={AZURE_VOICES} />
+      <div className="mt-4">
+        <Field label="Azure anahtarı" hint={saved ? 'Kayıtlı. Değiştirmek için yenisini yaz.' : 'Azure Portal > Speech kaynağın > Keys and Endpoint > KEY 1'}>
+          <input
+            className={inputClass}
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
+            placeholder={saved ? '••••••••' : 'Anahtarı yapıştır'}
+            type="password"
+            autoComplete="off"
+            autoCapitalize="off"
+            spellCheck={false}
+          />
+        </Field>
+        <Field label="Bölge (Location/Region)" hint="Aynı sayfada yazar. Örneğin: westeurope">
+          <input
+            className={inputClass}
+            value={region}
+            onChange={(e) => setRegion(e.target.value)}
+            placeholder="westeurope"
+            autoComplete="off"
+            autoCapitalize="off"
+            spellCheck={false}
+          />
+        </Field>
+      </div>
+      {state === 'error' && <p className="-mt-2 mb-3 text-[14px] text-danger">{error}</p>}
+      {state === 'ok' && <p className="-mt-2 mb-3 text-[14px] text-accent">Bağlandı. Örnek cümle okunuyor.</p>}
+      <Button
+        variant="secondary"
+        className="w-full"
+        disabled={state === 'testing' || !region.trim() || (!key.trim() && !saved)}
+        onClick={test}
+      >
+        {state === 'testing' ? 'Deneniyor…' : saved ? 'Kaydet ve dinle' : 'Bağlan ve dinle'}
+      </Button>
+      <p className="mt-3 text-[13px] leading-snug text-muted">
+        Azure seçiliyken danışmanın cevapları okunmak için Microsoft'a gönderilir. Senin mesajların gönderilmez. Azure'a ulaşılamazsa iPhone sesi kullanılır.
+      </p>
     </div>
   )
 }
