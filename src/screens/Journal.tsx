@@ -1,5 +1,5 @@
 import { NotePencil, Plus, Trash } from '@phosphor-icons/react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { MicButton } from '../components/MicButton'
 import { Button, Empty, Field, Sheet, cx, inputClass } from '../components/ui'
 import { update, useV } from '../lib/store'
@@ -107,18 +107,7 @@ function EntrySheet({ entry, onClose, existing }: { entry: JournalEntry; onClose
   }
 
   const text = (k: 'event' | 'thought' | 'behavior' | 'underneath', label: string, hint: string) => (
-    <Field label={label}>
-      <div className="flex items-start gap-2">
-        <textarea
-          value={e[k]}
-          onChange={(ev) => set(k, ev.target.value)}
-          placeholder={hint}
-          rows={2}
-          className={`${inputClass} [field-sizing:content] min-h-[76px] resize-none`}
-        />
-        <MicButton value={e[k]} onChange={(val) => set(k, val)} />
-      </div>
-    </Field>
+    <TextField label={label} hint={hint} value={e[k]} onChange={(val) => set(k, val)} />
   )
 
   return (
@@ -166,5 +155,24 @@ function EntrySheet({ entry, onClose, existing }: { entry: JournalEntry; onClose
         </Button>
       </div>
     </Sheet>
+  )
+}
+
+function TextField({ label, hint, value, onChange }: { label: string; hint: string; value: string; onChange: (v: string) => void }) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+  return (
+    <Field label={label}>
+      <div className="flex items-start gap-2">
+        <textarea
+          ref={ref}
+          value={value}
+          onChange={(ev) => onChange(ev.target.value)}
+          placeholder={hint}
+          rows={2}
+          className={`${inputClass} [field-sizing:content] min-h-[76px] resize-none`}
+        />
+        <MicButton value={value} onChange={onChange} target={ref} />
+      </div>
+    </Field>
   )
 }
