@@ -13,6 +13,7 @@
 ![Vite](https://img.shields.io/badge/Vite-8.3-646cff)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.3-38bdf8)
 ![PWA](https://img.shields.io/badge/PWA-kurulabilir-2c6a5d)
+![Lisans](https://img.shields.io/badge/Lisans-MIT-2c6a5d)
 
 </div>
 
@@ -131,4 +132,6 @@ Web Crypto güvenli bir bağlam gerektirir. Bu yüzden testleri `localhost` üze
 
 ## Lisans
 
-Henüz bir lisans belirlenmedi. Bir lisans eklenene kadar tüm hakları yazara aittir.
+[MIT Lisansı](LICENSE) ile yayınlanmıştır. Telif hakkı (c) 2026 Yıldırım Öztürk.
+
+Yazılım "olduğu gibi", hiçbir garanti olmaksızın sunulur. Tıbbi bir cihaz değildir. Onu yayınlayan ya da uyarlayan kişi, nasıl kullanıldığından kendisi sorumludur.
