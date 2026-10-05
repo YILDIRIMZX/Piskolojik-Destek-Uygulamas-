@@ -13,6 +13,7 @@
 ![Vite](https://img.shields.io/badge/Vite-8.3-646cff)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.3-38bdf8)
 ![PWA](https://img.shields.io/badge/PWA-installable-2c6a5d)
+![License](https://img.shields.io/badge/License-MIT-2c6a5d)
 
 </div>
 
@@ -131,4 +132,6 @@ Every push to `main` builds the app and publishes it to GitHub Pages through `.g
 
 ## License
 
-No license has been specified yet. All rights are reserved by the author until one is added.
+Released under the [MIT License](LICENSE). Copyright (c) 2026 Yıldırım Öztürk.
+
+The software is provided "as is", without warranty of any kind. It is not a medical device, and anyone who deploys or adapts it is responsible for how it is used.
