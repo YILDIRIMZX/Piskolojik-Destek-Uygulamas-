@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { BetaMessageParam } from '@anthropic-ai/sdk/resources/beta/messages/messages'
+import { t } from './i18n'
 import type { ChatMessage, ModelId, Usage } from './types'
 
 // $ per 1M tokens (Anthropic price list, 2026-09). Cache writes use the 5-minute TTL rate (1.25x input).
@@ -86,18 +87,17 @@ export async function checkKey(apiKey: string) {
 }
 
 export function describeError(err: unknown): string {
-  if (err instanceof RefusalError)
-    return 'Bu cevap güvenlik filtresine takıldı. Mesajını biraz farklı ifade edip tekrar deneyebilirsin.'
-  if (err instanceof Anthropic.AuthenticationError) return 'API anahtarı geçersiz. Ayarlardan kontrol et.'
-  if (err instanceof Anthropic.PermissionDeniedError) return 'Bu anahtarın bu modele erişimi yok.'
-  if (err instanceof Anthropic.RateLimitError) return 'Çok sık istek gönderildi ya da kredi limiti doldu. Biraz bekleyip tekrar dene.'
-  if (err instanceof Anthropic.APIConnectionError) return 'İnternet bağlantısı yok gibi görünüyor.'
+  if (err instanceof RefusalError) return t('errRefusal')
+  if (err instanceof Anthropic.AuthenticationError) return t('errAuth')
+  if (err instanceof Anthropic.PermissionDeniedError) return t('errPermission')
+  if (err instanceof Anthropic.RateLimitError) return t('errRate')
+  if (err instanceof Anthropic.APIConnectionError) return t('errConnection')
   if (err instanceof Anthropic.APIError) {
-    if (err.status === 400 && /credit|balance/i.test(err.message)) return 'Hesapta kredi kalmamış. Konsoldan kredi yükleyebilirsin.'
-    return `Claude hatası (${err.status ?? '?'}). Tekrar dene.`
+    if (err.status === 400 && /credit|balance/i.test(err.message)) return t('errCredit')
+    return t('errApi', { n: err.status ?? '?' })
   }
-  if (err instanceof Error && err.name === 'AbortError') return 'İptal edildi.'
-  return 'Beklenmeyen bir hata oldu. Tekrar dene.'
+  if (err instanceof Error && err.name === 'AbortError') return t('errAborted')
+  return t('errUnknown')
 }
 
 export const extractTag = (text: string, tag: string) => {

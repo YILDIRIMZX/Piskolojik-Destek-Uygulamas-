@@ -15,11 +15,14 @@ import { SessionChat } from './screens/SessionChat'
 import { Sessions } from './screens/Sessions'
 import { Settings } from './screens/Settings'
 import { Breathe, Compassion, Underneath } from './screens/Tools'
+import { t, useLang } from './lib/i18n'
 
 const TABS: Tab[] = ['home', 'sessions', 'journal', 'files']
 const AUTO_LOCK_MS = 2 * 60_000
 
 export default function App() {
+  // Re-renders the whole tree when the language changes; components read strings with t().
+  const lang = useLang()
   const vault = useVault()
   const [exists, setExists] = useState<boolean | null>(null)
   const [forgot, setForgot] = useState(false)
@@ -27,6 +30,10 @@ export default function App() {
   useEffect(() => {
     void hasVault().then(setExists)
   }, [vault])
+
+  useEffect(() => {
+    document.documentElement.lang = lang
+  }, [lang])
 
   // Save on background, lock after two minutes away.
   useEffect(() => {
@@ -51,13 +58,12 @@ export default function App() {
     return (
       <>
         <Lock onForgot={() => setForgot(true)} />
-        <Sheet open={forgot} onClose={() => setForgot(false)} title="PIN'i unuttun mu?">
+        <Sheet open={forgot} onClose={() => setForgot(false)} title={t('forgotTitle')}>
           <p className="text-[15.5px] leading-relaxed text-muted">
-            Veriler PIN kodunla şifreli olduğu için PIN olmadan açılamaz. Tek yol verileri silip baştan kurmak. Yedeğin varsa kurulumdan sonra
-            Ayarlar'dan geri yükleyebilirsin.
+            {t('forgotText')}
           </p>
           <Button variant="danger" size="lg" className="mt-6 mb-2 w-full" onClick={() => void wipe().then(() => setForgot(false))}>
-            Verileri sil ve baştan kur
+            {t('forgotWipe')}
           </Button>
         </Sheet>
       </>

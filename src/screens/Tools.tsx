@@ -3,12 +3,13 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { Button, Screen, cx } from '../components/ui'
 import { useNav } from '../nav'
+import { UNDER, getLang, locale, t, type Key } from '../lib/i18n'
 
 const PHASES = [
-  { label: 'Nefes al', sec: 4, scale: 1 },
-  { label: 'Tut', sec: 7, scale: 1 },
-  { label: 'Yavaşça ver', sec: 8, scale: 0.55 },
-] as const
+  { label: 'breatheIn', sec: 4, scale: 1 },
+  { label: 'breatheHold', sec: 7, scale: 1 },
+  { label: 'breatheOut', sec: 8, scale: 0.55 },
+] as const satisfies readonly { label: Key; sec: number; scale: number }[]
 
 const ROUNDS = 4
 
@@ -44,9 +45,9 @@ export function Breathe() {
   const scale = !running ? 0.55 : p.scale
 
   return (
-    <Screen title="4-7-8 nefes" onBack={nav.back}>
+    <Screen title={t('breatheTitle')} onBack={nav.back}>
       <p className="-mt-2 text-[15px] leading-snug text-muted">
-        Uzun nefes verme, sinir sistemini sakinleştirir. Öfke yükselirken ya da uyumadan önce dört tur yeterli.
+        {t('breatheIntro')}
       </p>
       <div className="relative mx-auto my-10 grid aspect-square w-full max-w-[300px] place-items-center">
         <div className="absolute inset-0 rounded-full border border-accent/20" />
@@ -58,18 +59,18 @@ export function Breathe() {
         />
         <div className="relative text-center">
           {done ? (
-            <p className="text-[22px] font-[650] text-accent-deep">Tamamlandı</p>
+            <p className="text-[22px] font-[650] text-accent-deep">{t('completed')}</p>
           ) : (
             <>
               <AnimatePresence mode="wait">
                 <motion.p
-                  key={running ? p.label : 'hazir'}
+                  key={running ? p.label : 'ready'}
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }}
                   className="text-[22px] font-[650] text-accent-deep"
                 >
-                  {running ? p.label : 'Hazır'}
+                  {running ? t(p.label) : t('ready')}
                 </motion.p>
               </AnimatePresence>
               {running && <p className="mt-1 font-mono text-[40px] leading-none font-medium tabular-nums text-accent-deep">{left}</p>}
@@ -77,34 +78,25 @@ export function Breathe() {
           )}
         </div>
       </div>
-      <p className="mb-5 text-center text-[14px] text-muted">{done ? `${ROUNDS} tur bitti` : `Tur ${round} / ${ROUNDS}`}</p>
+      <p className="mb-5 text-center text-[14px] text-muted">{done ? t('roundsDone', { n: ROUNDS }) : t('round', { n: round, m: ROUNDS })}</p>
       {done ? (
         <Button size="lg" className="w-full" onClick={reset}>
-          Tekrar
+          {t('again')}
         </Button>
       ) : (
         <Button size="lg" className="w-full" onClick={() => setRunning((r) => !r)}>
           {running ? <Pause size={18} weight="fill" /> : <Play size={18} weight="fill" />}
-          {running ? 'Duraklat' : 'Başla'}
+          {running ? t('pause') : t('start')}
         </Button>
       )}
     </Screen>
   )
 }
 
-const COMPASSION = [
-  {
-    title: 'Bu an zor',
-    text: 'Elini göğsüne koy. Kendine sessizce söyle: "Şu an acı çekiyorum. Bu zor bir an." Duyguyu düzeltmeye çalışma, sadece adını koy.',
-  },
-  {
-    title: 'Yalnız değilsin',
-    text: 'Dışlanmış, kenara itilmiş ya da yanlış anlaşılmış hissetmek insan olmanın parçası. Şu an dünyada pek çok insan aynı şeyi hissediyor. "Bu his sadece bana özgü değil."',
-  },
-  {
-    title: 'Kendine nazik ol',
-    text: 'Aynı şeyi yaşayan yakın bir arkadaşına ne söylerdin? Şimdi aynı cümleyi kendine söyle. Örneğin: "Elinden geleni yapıyorsun. Hata yapman seni değersiz yapmaz."',
-  },
+const COMPASSION: { title: Key; text: Key }[] = [
+  { title: 'c1Title', text: 'c1Text' },
+  { title: 'c2Title', text: 'c2Text' },
+  { title: 'c3Title', text: 'c3Text' },
 ]
 
 export function Compassion() {
@@ -113,9 +105,9 @@ export function Compassion() {
   const step = COMPASSION[i]
   const last = i === COMPASSION.length - 1
   return (
-    <Screen title="Öz-şefkat molası" onBack={nav.back}>
+    <Screen title={t('compassionTitle')} onBack={nav.back}>
       <p className="-mt-2 mb-6 text-[15px] leading-snug text-muted">
-        Kristin Neff'in üç adımlı egzersizi. İç eleştirmen sesini yükselttiğinde, ona karşı başka bir ses kurmak için.
+        {t('compassionIntro')}
       </p>
       <div className="mb-5 flex gap-1.5">
         {COMPASSION.map((_, k) => (
@@ -131,45 +123,35 @@ export function Compassion() {
           transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
           className="min-h-[220px] rounded-card bg-surface p-6 shadow-card"
         >
-          <p className="text-[24px] leading-tight font-[650] tracking-[-0.02em]">{step.title}</p>
-          <p className="mt-3 text-[17px] leading-relaxed text-muted">{step.text}</p>
+          <p className="text-[24px] leading-tight font-[650] tracking-[-0.02em]">{t(step.title)}</p>
+          <p className="mt-3 text-[17px] leading-relaxed text-muted">{t(step.text)}</p>
         </motion.div>
       </AnimatePresence>
       <div className="mt-6 flex gap-2">
         {i > 0 && (
           <Button variant="secondary" size="lg" onClick={() => setI(i - 1)}>
-            Geri
+            {t('back')}
           </Button>
         )}
         <Button size="lg" className="flex-1" onClick={() => (last ? nav.back() : setI(i + 1))}>
-          {last ? 'Bitir' : 'Sonraki'} {!last && <ArrowRight size={18} weight="bold" />}
+          {last ? t('finishTool') : t('next')} {!last && <ArrowRight size={18} weight="bold" />}
         </Button>
       </div>
     </Screen>
   )
 }
 
-const UNDER = [
-  { name: 'İncinme', q: 'Biri beni kırdı mı?' },
-  { name: 'Dışlanma', q: 'Halkanın dışında mı kaldım?' },
-  { name: 'Değersizlik', q: 'Önemsiz ya da gereksiz mi hissettim?' },
-  { name: 'Terk edilme korkusu', q: 'Yerimin doldurulacağından mı korktum?' },
-  { name: 'Utanç', q: 'Görülmek istemediğim bir yanım mı açığa çıktı?' },
-  { name: 'Yorgunluk', q: 'Uykusuz ya da aşırı yüklü müydüm?' },
-  { name: 'Çaresizlik', q: 'Kontrolü kaybettiğimi mi hissettim?' },
-  { name: 'Hayal kırıklığı', q: 'Beklediğim karşılığı mı alamadım?' },
-]
 
 export function Underneath() {
   const nav = useNav()
   const [picked, setPicked] = useState<string[]>([])
   return (
-    <Screen title="Öfkenin altında" onBack={nav.back}>
+    <Screen title={t('underTitle')} onBack={nav.back}>
       <p className="-mt-2 mb-6 text-[15px] leading-snug text-muted">
-        Öfke çoğu zaman ikincil bir duygudur. Altında daha kırılgan bir şey korunur. Şu an sana uyanlara dokun.
+        {t('underIntro')}
       </p>
       <div className="grid grid-cols-2 gap-2.5">
-        {UNDER.map((u) => {
+        {UNDER[getLang()].map((u) => {
           const on = picked.includes(u.name)
           return (
             <button
@@ -190,11 +172,13 @@ export function Underneath() {
       {picked.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-6 rounded-card bg-accent-soft p-5">
           <p className="text-[16px] leading-relaxed text-accent-deep">
-            Öfkenin altında <strong>{picked.join(', ').toLocaleLowerCase('tr-TR')}</strong> olabilir. Bunu karşındakine öfke yerine bu
-            kelimelerle söylemeyi dene: "Bu olduğunda asıl hissettiğim şey şuydu: {picked[0].toLocaleLowerCase('tr-TR')}."
+            {t('underResult', {
+              list: picked.join(', ').toLocaleLowerCase(locale()),
+              first: picked[0].toLocaleLowerCase(locale()),
+            })}
           </p>
           <Button className="mt-4" onClick={nav.newEntry}>
-            Günlüğe yaz
+            {t('writeJournal')}
           </Button>
         </motion.div>
       )}

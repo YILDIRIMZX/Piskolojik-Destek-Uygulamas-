@@ -6,6 +6,7 @@ import { flush, useV } from '../lib/store'
 import { useNav } from '../nav'
 import { fmtUsd } from './Sessions'
 import { approve } from './sessionLogic'
+import { t } from '../lib/i18n'
 
 type Tab = 'report' | 'file' | 'cycle'
 
@@ -20,8 +21,8 @@ export function Review({ id }: { id: string }) {
 
   if (!s?.draft) {
     return (
-      <Screen title="Rapor" onBack={nav.back}>
-        <p className="text-muted">Bu seansın onay bekleyen raporu yok.</p>
+      <Screen title={t('report')} onBack={nav.back}>
+        <p className="text-muted">{t('noPendingReport')}</p>
       </Screen>
     )
   }
@@ -37,31 +38,31 @@ export function Review({ id }: { id: string }) {
 
   return (
     <Screen
-      title={`Seans ${s.no} raporu`}
+      title={t('reportOf', { n: s.no })}
       onBack={nav.back}
       action={
         tab !== 'cycle' && (
           <button onClick={() => setEditing((e) => !e)} className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[15px] text-accent">
             {editing ? <CheckCircle size={18} weight="bold" /> : <PencilSimple size={18} weight="bold" />}
-            {editing ? 'Bitti' : 'Düzenle'}
+            {editing ? t('done') : t('edit')}
           </button>
         )
       }
     >
       <p className="-mt-3 mb-4 text-[14px] text-muted">
-        Kaydetmeden önce oku. İstersen düzelt. Seansın toplam maliyeti: {fmtUsd(s.usage.usd)}
+        {t('reviewText', { n: fmtUsd(s.usage.usd) })}
       </p>
       <div className="sticky top-[calc(max(env(safe-area-inset-top),12px)+46px)] z-10 -mx-1 mb-4 px-1">
         <Segmented<Tab>
           value={tab}
-          onChange={(t) => {
-            setTab(t)
+          onChange={(x) => {
+            setTab(x)
             setEditing(false)
           }}
           options={[
-            { value: 'report', label: 'Rapor' },
-            { value: 'file', label: 'Dosyam' },
-            { value: 'cycle', label: 'Döngü' },
+            { value: 'report', label: t('tabReport') },
+            { value: 'file', label: t('tabFile') },
+            { value: 'cycle', label: t('tabCycle') },
           ]}
         />
       </div>
@@ -77,7 +78,7 @@ export function Review({ id }: { id: string }) {
             ))}
           </ol>
         ) : (
-          <p className="text-[15px] text-muted">Bu seansta döngü güncellenmedi. Mevcut döngün korunacak.</p>
+          <p className="text-[15px] text-muted">{t('cycleUnchanged')}</p>
         )
       ) : editing ? (
         <textarea value={text} onChange={(e) => setText(e.target.value)} className={`${inputClass} min-h-[60dvh] font-mono text-[14px] leading-relaxed`} />
@@ -86,9 +87,9 @@ export function Review({ id }: { id: string }) {
       )}
 
       <Button size="lg" className="mt-6 w-full" onClick={save}>
-        Onayla ve kaydet
+        {t('approve')}
       </Button>
-      <p className="mt-2 text-center text-[13px] text-muted">Önceki danışan dosyan yedek olarak saklanır.</p>
+      <p className="mt-2 text-center text-[13px] text-muted">{t('approveNote')}</p>
     </Screen>
   )
 }

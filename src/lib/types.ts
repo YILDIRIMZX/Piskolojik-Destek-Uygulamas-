@@ -32,6 +32,8 @@ export interface Session {
   systemPrompt: string
   messages: ChatMessage[]
   status: 'active' | 'closing' | 'review' | 'done'
+  /** Language the session was held in. Older sessions have none and are Turkish. */
+  lang?: 'tr' | 'en'
   usage: Usage
   draft?: { report: string; clientFile: string; cycle: CycleStep[] }
 }
@@ -77,7 +79,8 @@ export interface Settings {
   azureVoice?: AzureVoice
 }
 
-export type AzureVoice = 'tr-TR-EmelNeural' | 'tr-TR-AhmetNeural'
+/** Azure neural voice name, e.g. tr-TR-EmelNeural. */
+export type AzureVoice = string
 
 export interface Vault {
   version: 1

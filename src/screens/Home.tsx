@@ -7,20 +7,21 @@ import { useNav } from '../nav'
 import { useV } from '../lib/store'
 import type { Vault } from '../lib/types'
 import { SESSION_MINUTES, nextSessionNo, remainingMinutes } from './sessionLogic'
+import { locale, t } from '../lib/i18n'
 
 const greeting = () => {
   const h = new Date().getHours()
-  if (h < 5) return 'İyi geceler'
-  if (h < 12) return 'Günaydın'
-  if (h < 18) return 'İyi günler'
-  return 'İyi akşamlar'
+  if (h < 5) return t('goodNight')
+  if (h < 12) return t('goodMorning')
+  if (h < 18) return t('goodDay')
+  return t('goodEvening')
 }
 
 /** The "next session" plan from the client file (or the last report), as plain text. */
 export function nextPlan(v: Vault): string | null {
   const sources = [v.clientFile, v.reports[0]?.markdown ?? '']
   for (const src of sources) {
-    const m = src.match(/^##+\s*(?:\d+\.\s*)?Bir sonraki seans[^\n]*\n([\s\S]*?)(?=\n##?\s|$)/im)
+    const m = src.match(/^##+\s*(?:\d+\.\s*)?(?:Bir sonraki seans|(?:Plan for the )?Next session|Starting Point for the Next Session)[^\n]*\n([\s\S]*?)(?=\n##?\s|$)/im)
     if (m) {
       const text = m[1].replace(/[*_#>`]/g, '').replace(/^\s*\d+\.\s*/gm, '').replace(/\s+/g, ' ').trim()
       if (text) return text
@@ -40,18 +41,18 @@ export function Home() {
   const weekEntries = v.journal.filter((e) => e.ts > weekAgo).length
 
   const hero = review
-    ? { label: `Seans ${review.no} raporu hazır`, sub: 'Raporu okuyup onayla.', cta: 'Raporu aç', go: () => nav.go({ name: 'review', id: review.id }) }
+    ? { label: t('reportReady', { n: review.no }), sub: t('reportReadySub'), cta: t('openReport'), go: () => nav.go({ name: 'review', id: review.id }) }
     : active
       ? {
-          label: `Seans ${active.no} devam ediyor`,
-          sub: `${Math.ceil(remainingMinutes(active))} dakika kaldı.`,
-          cta: 'Devam et',
+          label: t('sessionInProgress', { n: active.no }),
+          sub: t('minutesLeft', { n: Math.ceil(remainingMinutes(active)) }),
+          cta: t('continue'),
           go: () => nav.go({ name: 'session', id: active.id }),
         }
       : {
-          label: `Seans ${nextSessionNo(v)}`,
-          sub: plan ?? `${SESSION_MINUTES} dakikalık bir seans. Hazır olduğunda başlayalım.`,
-          cta: 'Seansı başlat',
+          label: t('sessionN', { n: nextSessionNo(v) }),
+          sub: plan ?? t('sessionDefaultSub', { n: SESSION_MINUTES }),
+          cta: t('startSession'),
           go: () => nav.tab('sessions'),
         }
 
@@ -68,10 +69,10 @@ export function Home() {
     <div className="pt-safe mx-auto max-w-xl px-4 pb-32">
       <header className="pt-2 pb-6">
         <div className="flex items-center justify-between">
-          <p className="text-[14px] text-muted">{new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+          <p className="text-[14px] text-muted">{new Date().toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' })}</p>
           <div className="flex items-center gap-2">
             <EmergencyButton onClick={nav.openEmergency} />
-            <IconButton label="Ayarlar" onClick={() => nav.go({ name: 'settings' })}>
+            <IconButton label={t('settings')} onClick={() => nav.go({ name: 'settings' })}>
               <GearSix size={20} />
             </IconButton>
           </div>
@@ -101,39 +102,39 @@ export function Home() {
           className="row-span-2 bg-accent-soft"
           onClick={nav.newEntry}
           icon={<NotePencil size={22} weight="bold" />}
-          title="Yerim yok anı"
-          text="Olayı, düşünceyi, duyguyu ve ne yaptığını kaydet."
-          foot={weekEntries ? `Bu hafta ${weekEntries} kayıt` : 'Bu hafta kayıt yok'}
+          title={t('tileEntryTitle')}
+          text={t('tileEntryText')}
+          foot={weekEntries ? t('weekEntries', { n: weekEntries }) : t('weekNoEntries')}
           tone="accent"
         />
         <Tile
           motionProps={item(2)}
           onClick={() => nav.go({ name: 'cycle' })}
           icon={<ArrowsClockwise size={22} weight="bold" />}
-          title="Döngüm"
-          text={v.cycle.length ? `${v.cycle.length} adım` : 'Henüz çıkarılmadı'}
+          title={t('tileCycle')}
+          text={v.cycle.length ? t('cycleSteps', { n: v.cycle.length }) : t('cycleNone')}
         />
         <Tile
           motionProps={item(3)}
           onClick={() => nav.go({ name: 'breathe' })}
           icon={<Wind size={22} weight="bold" />}
-          title="Nefes"
-          text="4-7-8 ile yavaşla"
+          title={t('tileBreathe')}
+          text={t('tileBreatheText')}
           decor={<BreathDecor />}
         />
         <Tile
           motionProps={item(4)}
           onClick={() => nav.go({ name: 'compassion' })}
           icon={<Heart size={22} weight="bold" />}
-          title="Öz-şefkat molası"
-          text="Üç adımda kendine nazik ol"
+          title={t('tileCompassion')}
+          text={t('tileCompassionText')}
         />
         <Tile
           motionProps={item(5)}
           onClick={() => nav.go({ name: 'underneath' })}
           icon={<Flower size={22} weight="bold" />}
-          title="Öfkenin altında"
-          text="Asıl duyguyu bul"
+          title={t('tileUnder')}
+          text={t('tileUnderText')}
         />
       </div>
     </div>

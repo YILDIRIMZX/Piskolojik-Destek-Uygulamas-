@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { getLang, speechLang, t } from './i18n'
 
 // Minimal typings for the Web Speech API (Safari exposes it as webkitSpeechRecognition).
 interface RecognitionResult {
@@ -92,7 +93,7 @@ export function useDictation(opts: {
     (current: string) => {
       const C = Ctor()
       if (!C) {
-        setError('Bu cihazda konuşma tanıma yok. Klavyedeki mikrofonu kullanabilirsin.')
+        setError(t('errNoRecognition'))
         return
       }
       reset()
@@ -101,7 +102,7 @@ export function useDictation(opts: {
       base.current = current ? current.replace(/\s*$/, ' ') : ''
       finals.current = ''
       const r = new C()
-      r.lang = 'tr-TR'
+      r.lang = speechLang()
       r.continuous = true
       r.interimResults = true
       ;(r as unknown as { onstart: (() => void) | null }).onstart = () => clearTimeout(startTimer.current)
@@ -125,8 +126,8 @@ export function useDictation(opts: {
     }
       r.onerror = (e) => {
         if (e.error === 'not-allowed' || e.error === 'service-not-allowed')
-          setError('Mikrofon izni verilmedi ya da bu modda kullanılamıyor. Klavyedeki mikrofonu kullanabilirsin.')
-        else if (e.error !== 'no-speech' && e.error !== 'aborted') setError('Ses anlaşılamadı, tekrar dene.')
+          setError(t('errMicDenied'))
+        else if (e.error !== 'no-speech' && e.error !== 'aborted') setError(t('errNotUnderstood'))
         reset()
       }
       r.onend = () => {
@@ -137,7 +138,7 @@ export function useDictation(opts: {
         r.start()
       } catch {
         reset()
-        setError('Konuşma tanıma başlatılamadı. Klavyedeki mikrofonu kullanabilirsin.')
+        setError(t('errRecognitionStart'))
         return
       }
       setListening(true)
@@ -145,7 +146,7 @@ export function useDictation(opts: {
       startTimer.current = window.setTimeout(() => {
         if (rec.current === r && !finals.current) {
           reset()
-          setError('Konuşma tanıma yanıt vermedi. Klavyedeki mikrofonu kullanabilirsin.')
+          setError(t('errRecognitionTimeout'))
         }
       }, START_TIMEOUT_MS)
     },
@@ -157,22 +158,22 @@ export function useDictation(opts: {
   return { listening, start, stop, error, supported: opts.enabled && canRecognize() }
 }
 
-const isTurkish = (v: SpeechSynthesisVoice) => v.lang.toLowerCase().replace('_', '-').startsWith('tr')
+const matchesLang = (v: SpeechSynthesisVoice) => v.lang.toLowerCase().replace('_', '-').startsWith(getLang())
 const isEnhanced = (v: SpeechSynthesisVoice) => /premium|enhanced|geliş|siri/i.test(`${v.name} ${v.voiceURI}`)
 
-/** Turkish voices on this device, best quality first. Voices can load late, so callers may re-query. */
-export function turkishVoices(): SpeechSynthesisVoice[] {
+/** Voices for the app language on this device, best quality first. Voices can load late, so callers may re-query. */
+export function langVoices(): SpeechSynthesisVoice[] {
   if (!canSpeak()) return []
   return window.speechSynthesis
     .getVoices()
-    .filter(isTurkish)
+    .filter(matchesLang)
     .sort((a, b) => Number(isEnhanced(b)) - Number(isEnhanced(a)))
 }
 
-export const voiceQuality = (v: SpeechSynthesisVoice) => (isEnhanced(v) ? 'Gelişmiş' : 'Standart')
+export const isEnhancedVoice = isEnhanced
 
 const pickVoice = (uri?: string) => {
-  const voices = turkishVoices()
+  const voices = langVoices()
   return voices.find((v) => v.voiceURI === uri) ?? voices[0] ?? null
 }
 
@@ -188,7 +189,7 @@ export function speak(text: string, rate = 1, voiceURI?: string): Promise<void> 
     if (!canSpeak()) return resolve()
     window.speechSynthesis.cancel()
     const u = new SpeechSynthesisUtterance(plain(text))
-    u.lang = 'tr-TR'
+    u.lang = speechLang()
     u.rate = rate
     const v = pickVoice(voiceURI)
     if (v) u.voice = v

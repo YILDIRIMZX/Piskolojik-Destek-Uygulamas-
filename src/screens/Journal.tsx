@@ -5,8 +5,8 @@ import { Button, Empty, Field, Sheet, cx, inputClass } from '../components/ui'
 import { update, useV } from '../lib/store'
 import { uid, type JournalEntry } from '../lib/types'
 import { useNav } from '../nav'
+import { EMOTIONS, getLang, locale, t } from '../lib/i18n'
 
-export const EMOTIONS = ['Öfke', 'İncinme', 'Yalnızlık', 'Utanç', 'Kaygı', 'Hayal kırıklığı', 'Değersizlik', 'Kıskançlık', 'Üzüntü']
 
 const blank = (): JournalEntry => ({
   id: uid(),
@@ -28,21 +28,21 @@ export function Journal() {
   return (
     <div className="pt-safe mx-auto max-w-xl px-4 pb-32">
       <div className="flex items-center justify-between pt-2 pb-2">
-        <h1 className="text-[30px] leading-tight font-[680] tracking-[-0.03em]">Günlük</h1>
+        <h1 className="text-[30px] leading-tight font-[680] tracking-[-0.03em]">{t('journal')}</h1>
         <Button size="sm" onClick={nav.newEntry}>
-          <Plus size={16} weight="bold" /> Yeni kayıt
+          <Plus size={16} weight="bold" /> {t('newEntry')}
         </Button>
       </div>
       <p className="mb-5 text-[15px] leading-snug text-muted">
-        "Yerim yok" anlarını yakala. Amaç düzeltmek değil, sadece fark etmek. Kayıtların bir sonraki seansta danışmanına iletilir.
+        {t('journalIntro')}
       </p>
 
       {entries.length === 0 ? (
         <Empty
           icon={<NotePencil size={26} weight="bold" />}
-          title="Henüz kayıt yok"
-          text="Kenara itilmiş ya da yerin doldurulmuş gibi hissettiğin bir an olduğunda buraya yaz."
-          action={<Button onClick={nav.newEntry}>İlk kaydı ekle</Button>}
+          title={t('noEntries')}
+          text={t('noEntriesText')}
+          action={<Button onClick={nav.newEntry}>{t('firstEntry')}</Button>}
         />
       ) : (
         <div className="space-y-3">
@@ -50,11 +50,11 @@ export function Journal() {
             <button key={e.id} onClick={() => setOpen(e)} className="block w-full rounded-card bg-surface p-4 text-left shadow-card active:scale-[0.985]">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-[13px] text-muted">
-                  {new Date(e.ts).toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+                  {new Date(e.ts).toLocaleString(locale(), { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
                 </span>
                 <Intensity value={e.intensity} />
               </div>
-              <p className="mt-1.5 line-clamp-2 text-[16px] leading-snug">{e.event || 'Olay yazılmamış'}</p>
+              <p className="mt-1.5 line-clamp-2 text-[16px] leading-snug">{e.event || t('noEvent')}</p>
               {e.emotions.length > 0 && (
                 <div className="mt-2.5 flex flex-wrap gap-1.5">
                   {e.emotions.map((x) => (
@@ -76,7 +76,7 @@ export function Journal() {
 
 function Intensity({ value }: { value: number }) {
   return (
-    <span className="flex items-center gap-1.5 text-[13px] font-medium text-muted" aria-label={`Yoğunluk ${value}/10`}>
+    <span className="flex items-center gap-1.5 text-[13px] font-medium text-muted" aria-label={t('intensityAria', { n: value })}>
       <span className="font-mono tabular-nums">{value}</span>
       <span className="flex gap-[3px]">
         {Array.from({ length: 5 }, (_, i) => (
@@ -101,7 +101,7 @@ function EntrySheet({ entry, onClose, existing }: { entry: JournalEntry; onClose
     onClose()
   }
   const remove = () => {
-    if (!confirm('Bu kayıt silinsin mi?')) return
+    if (!confirm(t('deleteConfirm'))) return
     update((v) => ({ ...v, journal: v.journal.filter((x) => x.id !== e.id) }))
     onClose()
   }
@@ -111,12 +111,12 @@ function EntrySheet({ entry, onClose, existing }: { entry: JournalEntry; onClose
   )
 
   return (
-    <Sheet open onClose={onClose} title={existing ? 'Kayıt' : 'Yerim yok anı'}>
-      {text('event', 'Ne oldu?', 'Kısaca olayı anlat')}
-      {text('thought', 'Aklından ne geçti?', 'O an kendine ne söyledin?')}
-      <Field label="Ne hissettin?" group>
+    <Sheet open onClose={onClose} title={existing ? t('entry') : t('tileEntryTitle')}>
+      {text('event', t('qEvent'), t('qEventHint'))}
+      {text('thought', t('qThought'), t('qThoughtHint'))}
+      <Field label={t('qFeel')} group>
         <div className="flex flex-wrap gap-2">
-          {EMOTIONS.map((emo) => (
+          {EMOTIONS[getLang()].map((emo) => (
             <button
               key={emo}
               type="button"
@@ -132,7 +132,7 @@ function EntrySheet({ entry, onClose, existing }: { entry: JournalEntry; onClose
           ))}
         </div>
       </Field>
-      <Field label={`Ne kadar yoğundu? ${e.intensity}/10`}>
+      <Field label={t('qIntensity', { n: e.intensity })}>
         <input
           type="range"
           min={0}
@@ -142,16 +142,16 @@ function EntrySheet({ entry, onClose, existing }: { entry: JournalEntry; onClose
           className="h-8 w-full accent-[var(--accent)]"
         />
       </Field>
-      {text('behavior', 'Ne yaptın?', 'Tepkin ne oldu?')}
-      {text('underneath', 'Öfkenin altında başka bir şey var mıydı?', 'İsteğe bağlı')}
+      {text('behavior', t('qBehavior'), t('qBehaviorHint'))}
+      {text('underneath', t('qUnder'), t('optional'))}
       <div className="mt-2 mb-2 flex gap-2">
         {existing && (
-          <Button variant="secondary" onClick={remove} aria-label="Kaydı sil" className="w-12 px-0 text-danger">
+          <Button variant="secondary" onClick={remove} aria-label={t('deleteEntry')} className="w-12 px-0 text-danger">
             <Trash size={18} weight="bold" />
           </Button>
         )}
         <Button size="lg" className="flex-1" onClick={save} disabled={!e.event.trim() && !e.thought.trim()}>
-          Kaydet
+          {t('save')}
         </Button>
       </div>
     </Sheet>

@@ -1,6 +1,7 @@
 import { CaretLeft, X } from '@phosphor-icons/react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, type ButtonHTMLAttributes, type ReactNode } from 'react'
+import { t } from '../lib/i18n'
 
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ')
 export { cx }
@@ -91,7 +92,7 @@ export function Screen({
           {onBack ? (
             <button onClick={onBack} className="flex items-center gap-0.5 rounded-full py-2 pr-3 text-[16px] text-accent">
               <CaretLeft size={22} weight="bold" />
-              Geri
+              {t('back')}
             </button>
           ) : (
             <span />
@@ -148,7 +149,7 @@ export function Sheet({
             <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-surface-2" />
             <div className="flex items-center justify-between px-5 pt-3 pb-2">
               <h2 className="text-[19px] font-[650] tracking-[-0.01em]">{title}</h2>
-              <IconButton label="Kapat" onClick={onClose} className="size-8">
+              <IconButton label={t('close')} onClick={onClose} className="size-8">
                 <X size={16} weight="bold" />
               </IconButton>
             </div>
