@@ -4,15 +4,17 @@ import { PIN_LENGTH, PinPad } from '../components/PinPad'
 import { Button, Field, Group, Row, Screen, Segmented, Sheet, Toggle, inputClass } from '../components/ui'
 import { checkKey, describeError } from '../lib/claude'
 import { exportBackup, exportMarkdown, importMarkdownFiles, mergeReports, readBackup } from '../lib/files'
-import { canRecognize, canSpeak, isIOSStandalone, speak, turkishVoices, voiceQuality } from '../lib/speech'
+import { AZURE_VOICES, setLang, t, useLang, type Lang } from '../lib/i18n'
+import { canRecognize, canSpeak, isEnhancedVoice, isIOSStandalone, langVoices, speak } from '../lib/speech'
 import { changePin, lock, update, useV, wipe } from '../lib/store'
 import type { AzureVoice, ModelId } from '../lib/types'
-import { AzureError, azureAudio, primeAudio, say } from '../lib/voice'
+import { AzureError, azureAudio, azureVoiceFor, primeAudio, say } from '../lib/voice'
 import { useNav } from '../nav'
 
 export function Settings() {
   const v = useV()
   const nav = useNav()
+  const lang = useLang()
   const [keySheet, setKeySheet] = useState(false)
   const [pinSheet, setPinSheet] = useState(false)
   const [wipeSheet, setWipeSheet] = useState(false)
@@ -28,7 +30,7 @@ export function Settings() {
       clientFileHistory: res.clientFile && x.clientFile ? [{ ts: Date.now(), markdown: x.clientFile }, ...x.clientFileHistory] : x.clientFileHistory,
       reports: mergeReports(x.reports, res.reports),
     }))
-    setNotice(`${res.clientFile ? 'Danışan dosyası ve ' : ''}${res.reports.length} rapor aktarıldı.`)
+    setNotice(t('imported', { file: res.clientFile ? t('importedClient') : '', n: res.reports.length }))
   }
 
   const onRestore = async (files: FileList | null) => {
@@ -36,27 +38,40 @@ export function Settings() {
     if (!f) return
     try {
       const data = await readBackup(f)
-      update((x) => ({ ...x, ...data, apiKey: x.apiKey, settings: { ...x.settings, ...data.settings } }))
-      setNotice('Yedek geri yüklendi.')
+      update((x) => ({ ...x, ...data, apiKey: x.apiKey, settings: { ...x.settings, ...data.settings, azureKey: x.settings.azureKey } }))
+      setNotice(t('restored'))
     } catch (e) {
-      setNotice(e instanceof Error ? e.message : 'Yedek okunamadı.')
+      setNotice(e instanceof Error ? e.message : t('restoreFailed'))
     }
   }
 
-  const masked = v.apiKey ? `${v.apiKey.slice(0, 10)}...${v.apiKey.slice(-4)}` : 'Eklenmedi'
+  const masked = v.apiKey ? `${v.apiKey.slice(0, 10)}…${v.apiKey.slice(-4)}` : t('notAdded')
 
   return (
-    <Screen title="Ayarlar" onBack={nav.back}>
+    <Screen title={t('settings')} onBack={nav.back}>
       {notice && (
         <button onClick={() => setNotice(null)} className="mb-4 w-full rounded-card bg-accent-soft p-3.5 text-left text-[14.5px] text-accent-deep">
           {notice}
         </button>
       )}
 
-      <Group title="Claude">
-        <Row icon={<Key size={18} weight="bold" />} title="API anahtarı" sub={masked} onClick={() => setKeySheet(true)} />
+      <Group title={t('language')}>
         <div className="py-3.5">
-          <p className="mb-2 text-[15px]">Varsayılan model</p>
+          <Segmented<Lang>
+            value={lang}
+            onChange={setLang}
+            options={[
+              { value: 'tr', label: 'Türkçe' },
+              { value: 'en', label: 'English' },
+            ]}
+          />
+        </div>
+      </Group>
+
+      <Group title="Claude">
+        <Row icon={<Key size={18} weight="bold" />} title={t('apiKey')} sub={masked} onClick={() => setKeySheet(true)} />
+        <div className="py-3.5">
+          <p className="mb-2 text-[15px]">{t('defaultModel')}</p>
           <Segmented<ModelId>
             value={v.settings.model}
             onChange={(model) => setSettings({ model })}
@@ -65,103 +80,87 @@ export function Settings() {
               { value: 'claude-opus-5-5', label: 'Opus 5.5' },
             ]}
           />
-          <p className="mt-2 text-[13px] text-muted">Sonnet hızlı ve uygun fiyatlı. Opus daha derin ama yaklaşık iki kat pahalı.</p>
+          <p className="mt-2 text-[13px] text-muted">{t('modelHint')}</p>
         </div>
       </Group>
 
-      <Group title="Ses">
+      <Group title={t('voice')}>
         <Toggle
           checked={v.settings.readAloud}
           onChange={(readAloud) => setSettings({ readAloud })}
-          label="Cevapları sesli oku"
-          hint={canSpeak() ? undefined : 'Bu cihazda sesli okuma yok.'}
+          label={t('readAloudToggle')}
+          hint={canSpeak() ? undefined : t('noTtsDevice')}
         />
         <Toggle
           checked={v.settings.inAppSpeech}
           onChange={(inAppSpeech) => setSettings({ inAppSpeech, handsFree: inAppSpeech && v.settings.handsFree })}
-          label="Uygulama içi konuşma tanıma"
-          hint={
-            !canRecognize()
-              ? 'Bu cihazda yok. Klavyedeki mikrofon kullanılır.'
-              : isIOSStandalone()
-                ? 'Deneysel. iPhone ana ekran modunda takılabilir. Kapalıyken klavyedeki mikrofon kullanılır.'
-                : 'Kapalıyken klavyedeki mikrofon kullanılır.'
-          }
+          label={t('inAppSpeech')}
+          hint={!canRecognize() ? t('inAppNone') : isIOSStandalone() ? t('inAppIos') : t('inAppOther')}
         />
         <Toggle
           checked={v.settings.handsFree && v.settings.inAppSpeech}
           onChange={(handsFree) => setSettings({ handsFree, inAppSpeech: handsFree || v.settings.inAppSpeech })}
-          label="Eller serbest"
-          hint={canRecognize() ? 'Sustuğunda mesaj gönderilir, cevap okunur, sonra yine dinlenir.' : 'Bu cihazda konuşma tanıma yok.'}
+          label={t('handsFree')}
+          hint={canRecognize() ? t('handsFreeHintSettings') : t('noRecognition')}
         />
         <div className="py-3.5">
-          <p className="mb-2 text-[15px]">Okuma hızı</p>
+          <p className="mb-2 text-[15px]">{t('speechRate')}</p>
           <Segmented<string>
             value={String(v.settings.speechRate)}
             onChange={(r) => setSettings({ speechRate: Number(r) })}
             options={[
-              { value: '0.85', label: 'Yavaş' },
-              { value: '1', label: 'Normal' },
-              { value: '1.15', label: 'Hızlı' },
+              { value: '0.85', label: t('slow') },
+              { value: '1', label: t('normal') },
+              { value: '1.15', label: t('fast') },
             ]}
           />
         </div>
         <VoiceEngine />
       </Group>
 
-      <Group title="Veriler">
+      <Group title={t('data')}>
         <label className="flex w-full cursor-pointer items-center gap-3 py-3.5">
           <span className="grid size-9 place-items-center rounded-full bg-accent-soft text-accent">
             <FileArrowUp size={18} weight="bold" />
           </span>
           <span className="flex-1">
-            <span className="block text-[16px]">Bilgisayardan dosya aktar</span>
-            <span className="block text-[13.5px] text-muted">Danisan_Dosyasi.md ve Seans_XX_Rapor.md</span>
+            <span className="block text-[16px]">{t('importFiles')}</span>
+            <span className="block text-[13.5px] text-muted">{t('importFilesSub')}</span>
           </span>
           <input type="file" accept=".md,text/markdown,text/plain" multiple hidden onChange={(e) => void onImport(e.target.files)} />
         </label>
-        <Row
-          icon={<Export size={18} weight="bold" />}
-          title="Bilgisayara gönder"
-          sub="Dosya ve raporları Markdown olarak paylaş"
-          onClick={() => void exportMarkdown(v)}
-        />
-        <Row icon={<DownloadSimple size={18} weight="bold" />} title="Yedek al" sub="Her şey tek dosyada (API anahtarı hariç)" onClick={() => void exportBackup(v)} />
+        <Row icon={<Export size={18} weight="bold" />} title={t('exportFiles')} sub={t('exportFilesSub')} onClick={() => void exportMarkdown(v)} />
+        <Row icon={<DownloadSimple size={18} weight="bold" />} title={t('backup')} sub={t('backupSub')} onClick={() => void exportBackup(v)} />
         <label className="flex w-full cursor-pointer items-center gap-3 py-3.5">
           <span className="grid size-9 place-items-center rounded-full bg-accent-soft text-accent">
             <UploadSimple size={18} weight="bold" />
           </span>
           <span className="flex-1">
-            <span className="block text-[16px]">Yedeği geri yükle</span>
-            <span className="block text-[13.5px] text-muted">Mevcut verilerin yerine geçer</span>
+            <span className="block text-[16px]">{t('restore')}</span>
+            <span className="block text-[13.5px] text-muted">{t('restoreSub')}</span>
           </span>
           <input type="file" accept=".json,application/json" hidden onChange={(e) => void onRestore(e.target.files)} />
         </label>
       </Group>
 
-      <Group title="Güvenlik">
-        <Row icon={<Password size={18} weight="bold" />} title="PIN kodunu değiştir" onClick={() => setPinSheet(true)} />
-        <Row icon={<LockKey size={18} weight="bold" />} title="Şimdi kilitle" onClick={lock} />
-        <Row icon={<Trash size={18} weight="bold" />} title="Tüm verileri sil" onClick={() => setWipeSheet(true)} />
+      <Group title={t('security')}>
+        <Row icon={<Password size={18} weight="bold" />} title={t('changePin')} onClick={() => setPinSheet(true)} />
+        <Row icon={<LockKey size={18} weight="bold" />} title={t('lockNow')} onClick={lock} />
+        <Row icon={<Trash size={18} weight="bold" />} title={t('wipeAll')} onClick={() => setWipeSheet(true)} />
       </Group>
 
-      <p className="px-1 text-[13px] leading-relaxed text-muted">
-        Verilerin sadece bu cihazda, PIN kodunla şifreli durur. Seans sırasında mesajlar doğrudan Anthropic'e gönderilir. Bu uygulama lisanslı
-        bir terapistin yerini tutmaz.
-      </p>
+      <p className="px-1 text-[13px] leading-relaxed text-muted">{t('privacyNote')}</p>
 
       <KeySheet open={keySheet} onClose={() => setKeySheet(false)} />
-      <PinSheet open={pinSheet} onClose={() => setPinSheet(false)} onDone={() => setNotice('PIN kodu değiştirildi.')} />
-      <Sheet open={wipeSheet} onClose={() => setWipeSheet(false)} title="Tüm veriler silinsin mi?">
-        <p className="text-[15.5px] leading-relaxed text-muted">
-          Seanslar, raporlar, günlük ve API anahtarı bu telefondan kalıcı olarak silinir. Geri alınamaz. Önce yedek almanı öneririm.
-        </p>
+      <PinSheet open={pinSheet} onClose={() => setPinSheet(false)} onDone={() => setNotice(t('pinChanged'))} />
+      <Sheet open={wipeSheet} onClose={() => setWipeSheet(false)} title={t('wipeTitle')}>
+        <p className="text-[15.5px] leading-relaxed text-muted">{t('wipeText')}</p>
         <div className="mt-6 mb-2 space-y-2">
           <Button variant="secondary" size="lg" className="w-full" onClick={() => void exportBackup(v)}>
-            Önce yedek al
+            {t('backupFirst')}
           </Button>
           <Button variant="danger" size="lg" className="w-full" onClick={() => void wipe()}>
-            Kalıcı olarak sil
+            {t('wipeForever')}
           </Button>
         </div>
       </Sheet>
@@ -194,8 +193,8 @@ function KeySheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   }
 
   return (
-    <Sheet open={open} onClose={onClose} title="API anahtarı">
-      <Field label="Yeni anahtar" hint={v.apiKey ? 'Kaydedince eskisinin yerine geçer.' : 'console.anthropic.com > API Keys'}>
+    <Sheet open={open} onClose={onClose} title={t('apiKey')}>
+      <Field label={t('newKey')} hint={v.apiKey ? t('newKeyReplace') : 'console.anthropic.com > API Keys'}>
         <input
           className={inputClass}
           value={key}
@@ -209,7 +208,7 @@ function KeySheet({ open, onClose }: { open: boolean; onClose: () => void }) {
       </Field>
       {state === 'error' && <p className="-mt-2 mb-3 text-[14px] text-danger">{error}</p>}
       <Button size="lg" className="mb-2 w-full" disabled={!key.trim().startsWith('sk-') || state === 'checking'} onClick={save}>
-        {state === 'checking' ? 'Kontrol ediliyor…' : 'Kaydet'}
+        {state === 'checking' ? t('checking') : t('save')}
       </Button>
     </Sheet>
   )
@@ -234,17 +233,17 @@ function PinSheet({ open, onClose, onDone }: { open: boolean; onClose: () => voi
         onDone()
       })
     } else {
-      setErr('Eşleşmedi. Baştan dene.')
+      setErr(t('pinNoMatch'))
       setA('')
       setB('')
     }
   }, [a, b, onClose, onDone])
   const second = a.length === PIN_LENGTH
   return (
-    <Sheet open={open} onClose={onClose} title="PIN kodunu değiştir">
+    <Sheet open={open} onClose={onClose} title={t('changePin')}>
       <div className="py-4">
         <PinPad
-          title={second ? 'Tekrarla' : 'Yeni PIN'}
+          title={second ? t('pinRepeat') : t('pinNew')}
           value={second ? b : a}
           onChange={(x) => {
             setErr(null)
@@ -258,29 +257,28 @@ function PinSheet({ open, onClose, onDone }: { open: boolean; onClose: () => voi
   )
 }
 
-const SAMPLE = 'Merhaba. Bugün nasılsın? Hazır olduğunda başlayabiliriz.'
-
 function VoicePicker() {
   const v = useV()
-  const [voices, setVoices] = useState(turkishVoices)
+  const lang = useLang()
+  const [voices, setVoices] = useState(langVoices)
   useEffect(() => {
+    setVoices(langVoices())
     if (!canSpeak()) return
-    const load = () => setVoices(turkishVoices())
+    const load = () => setVoices(langVoices())
     window.speechSynthesis.addEventListener('voiceschanged', load)
     return () => window.speechSynthesis.removeEventListener('voiceschanged', load)
-  }, [])
+  }, [lang])
   const current = voices.find((x) => x.voiceURI === v.settings.voiceURI) ?? voices[0]
   const choose = (uri: string) => {
     update((x) => ({ ...x, settings: { ...x.settings, voiceURI: uri } }))
-    void speak(SAMPLE, v.settings.speechRate, uri)
+    void speak(t('sample'), v.settings.speechRate, uri)
   }
-  const hasEnhanced = voices.some((x) => voiceQuality(x) === 'Gelişmiş')
+  const hasEnhanced = voices.some(isEnhancedVoice)
   return (
-    <div className="py-3.5">
-      <p className="mb-1 text-[15px]">Ses</p>
-      <p className="mb-2 text-[13px] text-muted">Dokununca seçilir ve örnek cümleyi okur.</p>
+    <div>
+      <p className="mb-2 text-[13px] text-muted">{t('voiceTapHint')}</p>
       {voices.length === 0 ? (
-        <p className="text-[14px] text-muted">Bu cihazda Türkçe ses bulunamadı.</p>
+        <p className="text-[14px] text-muted">{t('noVoices')}</p>
       ) : (
         <div className="flex flex-col gap-1.5">
           {voices.map((x) => (
@@ -291,19 +289,14 @@ function VoicePicker() {
             >
               <span>
                 <span className="block text-[15px]">{x.name}</span>
-                <span className="block text-[12.5px] text-muted">{voiceQuality(x)}</span>
+                <span className="block text-[12.5px] text-muted">{isEnhancedVoice(x) ? t('enhanced') : t('standard')}</span>
               </span>
               {current?.voiceURI === x.voiceURI && <Check size={18} weight="bold" className="text-accent" />}
             </button>
           ))}
         </div>
       )}
-      {!hasEnhanced && (
-        <p className="mt-3 rounded-field bg-accent-soft p-3 text-[13.5px] leading-snug text-accent-deep">
-          Daha doğal bir ses için iPhone Ayarlar &gt; Erişilebilirlik &gt; Seslendirilen İçerik &gt; Sesler &gt; Türkçe bölümünden
-          "Gelişmiş" bir sesi indir. Sonra uygulamayı kapatıp yeniden aç.
-        </p>
-      )}
+      {!hasEnhanced && <p className="mt-3 rounded-field bg-accent-soft p-3 text-[13.5px] leading-snug text-accent-deep">{t('enhancedHelp')}</p>}
     </div>
   )
 }
@@ -313,13 +306,13 @@ function VoiceEngine() {
   const engine = v.settings.tts ?? 'device'
   return (
     <div className="py-3.5">
-      <p className="mb-2 text-[15px]">Ses motoru</p>
+      <p className="mb-2 text-[15px]">{t('voiceEngine')}</p>
       <Segmented<'device' | 'azure'>
         value={engine}
         onChange={(tts) => update((x) => ({ ...x, settings: { ...x.settings, tts } }))}
         options={[
-          { value: 'device', label: 'iPhone sesi' },
-          { value: 'azure', label: 'Azure (doğal)' },
+          { value: 'device', label: t('deviceVoice') },
+          { value: 'azure', label: t('azureVoice') },
         ]}
       />
       <div className="mt-3">{engine === 'azure' ? <AzureSettings /> : <VoicePicker />}</div>
@@ -327,18 +320,14 @@ function VoiceEngine() {
   )
 }
 
-const AZURE_VOICES: { value: AzureVoice; label: string }[] = [
-  { value: 'tr-TR-EmelNeural', label: 'Emel (kadın)' },
-  { value: 'tr-TR-AhmetNeural', label: 'Ahmet (erkek)' },
-]
-
 function AzureSettings() {
   const v = useV()
+  const lang = useLang()
   const [key, setKey] = useState('')
   const [region, setRegion] = useState(v.settings.azureRegion ?? '')
   const [state, setState] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle')
   const [error, setError] = useState('')
-  const voice = v.settings.azureVoice ?? 'tr-TR-EmelNeural'
+  const voice = azureVoiceFor(v.settings)
   const saved = !!v.settings.azureKey
 
   const test = async () => {
@@ -347,14 +336,14 @@ function AzureSettings() {
     const k = key.trim() || v.settings.azureKey || ''
     const r = region.trim().toLowerCase().replace(/\s+/g, '')
     try {
-      await azureAudio('Merhaba.', { key: k, region: r, voice, rate: 1 })
+      await azureAudio('OK.', { key: k, region: r, voice, rate: 1 })
       update((x) => ({ ...x, settings: { ...x.settings, azureKey: k, azureRegion: r } }))
       setKey('')
       setState('ok')
-      void say(SAMPLE, { ...v.settings, tts: 'azure', azureKey: k, azureRegion: r })
+      void say(t('sample'), { ...v.settings, tts: 'azure', azureKey: k, azureRegion: r })
     } catch (e) {
       setState('error')
-      setError(e instanceof AzureError ? e.message : 'Bağlanılamadı.')
+      setError(e instanceof AzureError ? e.message : t('azureConnectFail'))
     }
   }
 
@@ -362,32 +351,36 @@ function AzureSettings() {
     update((x) => ({ ...x, settings: { ...x.settings, azureVoice } }))
     if (saved) {
       primeAudio()
-      void say(SAMPLE, { ...v.settings, azureVoice })
+      void say(t('sample'), { ...v.settings, azureVoice })
     }
   }
 
   return (
     <div>
-      <Segmented<AzureVoice> value={voice} onChange={setVoice} options={AZURE_VOICES} />
+      <Segmented<AzureVoice>
+        value={voice}
+        onChange={setVoice}
+        options={AZURE_VOICES[lang].map((x) => ({ value: x.value, label: `${x.name} (${t(x.gender)})` }))}
+      />
       <div className="mt-4">
-        <Field label="Azure anahtarı" hint={saved ? 'Kayıtlı. Değiştirmek için yenisini yaz.' : 'Azure Portal > Speech kaynağın > Keys and Endpoint > KEY 1'}>
+        <Field label={t('azureKey')} hint={saved ? t('azureKeySaved') : t('azureKeyHint')}>
           <input
             className={inputClass}
             value={key}
             onChange={(e) => setKey(e.target.value)}
-            placeholder={saved ? '••••••••' : 'Anahtarı yapıştır'}
+            placeholder={saved ? '••••••••' : t('pasteKey')}
             type="password"
             autoComplete="off"
             autoCapitalize="off"
             spellCheck={false}
           />
         </Field>
-        <Field label="Bölge (Location/Region)" hint="Aynı sayfada yazar. Örneğin: westeurope">
+        <Field label={t('region')} hint={t('regionHint')}>
           <input
             className={inputClass}
             value={region}
             onChange={(e) => setRegion(e.target.value)}
-            placeholder="westeurope"
+            placeholder="northeurope"
             autoComplete="off"
             autoCapitalize="off"
             spellCheck={false}
@@ -395,18 +388,11 @@ function AzureSettings() {
         </Field>
       </div>
       {state === 'error' && <p className="-mt-2 mb-3 text-[14px] text-danger">{error}</p>}
-      {state === 'ok' && <p className="-mt-2 mb-3 text-[14px] text-accent">Bağlandı. Örnek cümle okunuyor.</p>}
-      <Button
-        variant="secondary"
-        className="w-full"
-        disabled={state === 'testing' || !region.trim() || (!key.trim() && !saved)}
-        onClick={test}
-      >
-        {state === 'testing' ? 'Deneniyor…' : saved ? 'Kaydet ve dinle' : 'Bağlan ve dinle'}
+      {state === 'ok' && <p className="-mt-2 mb-3 text-[14px] text-accent">{t('azureOk')}</p>}
+      <Button variant="secondary" className="w-full" disabled={state === 'testing' || !region.trim() || (!key.trim() && !saved)} onClick={test}>
+        {state === 'testing' ? t('testing') : saved ? t('saveListen') : t('connectListen')}
       </Button>
-      <p className="mt-3 text-[13px] leading-snug text-muted">
-        Azure seçiliyken danışmanın cevapları okunmak için Microsoft'a gönderilir. Senin mesajların gönderilmez. Azure'a ulaşılamazsa iPhone sesi kullanılır.
-      </p>
+      <p className="mt-3 text-[13px] leading-snug text-muted">{t('azureNote')}</p>
     </div>
   )
 }

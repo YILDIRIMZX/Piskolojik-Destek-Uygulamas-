@@ -2,6 +2,7 @@ import { Backspace } from '@phosphor-icons/react'
 import { motion, useAnimationControls } from 'motion/react'
 import { useEffect } from 'react'
 import { cx } from './ui'
+import { t } from '../lib/i18n'
 
 export const PIN_LENGTH = 6
 
@@ -35,7 +36,7 @@ export function PinPad({
     <div className="flex flex-col items-center">
       <h1 className="text-[24px] font-[650] tracking-[-0.02em]">{title}</h1>
       <p className="mt-1.5 min-h-[22px] text-center text-[15px] text-muted">{error ? <span className="text-danger">{error}</span> : sub}</p>
-      <motion.div animate={shake} className="my-8 flex gap-3.5" aria-label={`${value.length} hane girildi`}>
+      <motion.div animate={shake} className="my-8 flex gap-3.5" aria-label={t('pinEntered', { n: value.length })}>
         {Array.from({ length: PIN_LENGTH }, (_, i) => (
           <span
             key={i}
@@ -57,7 +58,7 @@ export function PinPad({
           0
         </Key>
         <button
-          aria-label="Sil"
+          aria-label={t('deleteDigit')}
           onClick={() => onChange(value.slice(0, -1))}
           className="grid size-[76px] place-items-center rounded-full text-muted active:bg-surface-2"
         >

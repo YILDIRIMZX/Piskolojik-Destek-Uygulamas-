@@ -1,3 +1,4 @@
+import { AZURE_VOICES, getLang, t } from './i18n'
 import { plain, speak, stopSpeaking } from './speech'
 import type { AzureVoice, Settings } from './types'
 
@@ -36,7 +37,7 @@ const ratePercent = (rate: number) => `${Math.round((rate - 1) * 100)}%`
 export class AzureError extends Error {}
 
 export async function azureAudio(text: string, o: { key: string; region: string; voice: AzureVoice; rate: number }) {
-  const ssml = `<speak version="1.0" xml:lang="tr-TR"><voice name="${o.voice}"><prosody rate="${ratePercent(o.rate)}">${escapeXml(plain(text))}</prosody></voice></speak>`
+  const ssml = `<speak version="1.0" xml:lang="${o.voice.slice(0, 5)}"><voice name="${o.voice}"><prosody rate="${ratePercent(o.rate)}">${escapeXml(plain(text))}</prosody></voice></speak>`
   let res: Response
   try {
     res = await fetch(`https://${o.region.trim()}.tts.speech.microsoft.com/cognitiveservices/v1`, {
@@ -49,11 +50,11 @@ export async function azureAudio(text: string, o: { key: string; region: string;
       body: ssml,
     })
   } catch {
-    throw new AzureError('Azure\'a bağlanılamadı. Bölge adını ve internet bağlantını kontrol et.')
+    throw new AzureError(t('errAzureConnect'))
   }
-  if (res.status === 401) throw new AzureError('Azure anahtarı geçersiz ya da bölge yanlış.')
-  if (res.status === 429) throw new AzureError('Azure kotası doldu ya da çok sık istek gönderildi.')
-  if (!res.ok) throw new AzureError(`Azure hatası (${res.status}).`)
+  if (res.status === 401) throw new AzureError(t('errAzureKey'))
+  if (res.status === 429) throw new AzureError(t('errAzureQuota'))
+  if (!res.ok) throw new AzureError(t('errAzure', { n: res.status }))
   return res.blob()
 }
 
@@ -68,13 +69,19 @@ function play(blob: Blob): Promise<void> {
   })
 }
 
+/** The chosen Azure voice if it matches the app language, otherwise that language's first voice. */
+export function azureVoiceFor(s: Settings): AzureVoice {
+  const voices = AZURE_VOICES[getLang()]
+  return voices.find((v) => v.value === s.azureVoice)?.value ?? voices[0].value
+}
+
 export const azureReady = (s: Settings) => s.tts === 'azure' && !!s.azureKey && !!s.azureRegion
 
 /** Reads text aloud with the chosen engine. Falls back to the device voice if Azure fails. */
 export async function say(text: string, s: Settings): Promise<void> {
   if (azureReady(s)) {
     try {
-      const blob = await azureAudio(text, { key: s.azureKey!, region: s.azureRegion!, voice: s.azureVoice ?? 'tr-TR-EmelNeural', rate: s.speechRate })
+      const blob = await azureAudio(text, { key: s.azureKey!, region: s.azureRegion!, voice: azureVoiceFor(s), rate: s.speechRate })
       return await play(blob)
     } catch {
       /* fall through to the device voice */

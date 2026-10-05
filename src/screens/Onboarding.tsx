@@ -2,11 +2,12 @@ import { ArrowRight, CheckCircle, Export, FileArrowUp, Key, LockKey, PlusSquare 
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { PIN_LENGTH, PinPad } from '../components/PinPad'
-import { Button, Field, inputClass } from '../components/ui'
+import { Button, Field, Segmented, inputClass } from '../components/ui'
 import { checkKey, describeError } from '../lib/claude'
 import { importMarkdownFiles, mergeReports } from '../lib/files'
 import { createVault } from '../lib/store'
 import { newVault, type Report } from '../lib/types'
+import { setLang, t, useLang, type Lang } from '../lib/i18n'
 
 type Step = 'install' | 'welcome' | 'pin' | 'pin2' | 'key' | 'import'
 
@@ -15,6 +16,7 @@ const isStandalone = () =>
 const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent)
 
 export function Onboarding() {
+  const lang = useLang()
   const [step, setStep] = useState<Step>(isIOS() && !isStandalone() ? 'install' : 'welcome')
   const [pin, setPin] = useState('')
   const [pin2, setPin2] = useState('')
@@ -34,7 +36,7 @@ export function Onboarding() {
     if (step !== 'pin2' || pin2.length !== PIN_LENGTH) return
     if (pin2 === pin) setTimeout(() => setStep('key'), 150)
     else {
-      setPinError('PIN kodları eşleşmedi. Baştan dene.')
+      setPinError(t('pinMismatch'))
       setPin('')
       setPin2('')
       setStep('pin')
@@ -79,19 +81,19 @@ export function Onboarding() {
           {step === 'install' && (
             <Intro
               icon={<PlusSquare size={30} weight="duotone" />}
-              title="Önce ana ekrana ekle"
-              text="Uygulama, ana ekrandan açıldığında tam ekran çalışır. Safari'deki veriler ana ekrandaki uygulamaya taşınmaz, bu yüzden kurulumu orada yap."
+              title={t('installTitle')}
+              text={t('installText')}
             >
               <ol className="mt-6 space-y-3 text-[16px]">
                 <InstallStep n="1">
-                  Alttaki <Export size={20} className="mx-1 inline -translate-y-0.5 text-accent" /> Paylaş düğmesine dokun
+                  {t('installStep1')} <Export size={20} className="mx-1 inline -translate-y-0.5 text-accent" />
                 </InstallStep>
-                <InstallStep n="2">"Ana Ekrana Ekle"yi seç</InstallStep>
-                <InstallStep n="3">Ana ekrandaki Seans simgesinden aç</InstallStep>
+                <InstallStep n="2">{t('installStep2')}</InstallStep>
+                <InstallStep n="3">{t('installStep3')}</InstallStep>
               </ol>
               <div className="mt-auto pt-8">
                 <Button variant="secondary" size="lg" className="w-full" onClick={() => setStep('welcome')}>
-                  Safari'de devam et
+                  {t('installContinue')}
                 </Button>
               </div>
             </Intro>
@@ -100,15 +102,25 @@ export function Onboarding() {
           {step === 'welcome' && (
             <Intro
               icon={<LockKey size={30} weight="duotone" />}
-              title="Seans"
-              text="Seanslarına, günlüğüne ve raporlarına telefonundan ulaş. Her şey bu cihazda, senin PIN kodunla şifreli durur."
+              title={t('appName')}
+              text={t('welcomeText')}
             >
-              <p className="mt-6 rounded-card bg-surface p-4 text-[14.5px] leading-relaxed text-muted shadow-card">
-                Bu uygulama lisanslı bir terapistin yerini tutmaz. Seanslar arasında bir destek aracıdır. Acil bir durumda 112'yi ara.
+              <div className="mt-6">
+                <Segmented<Lang>
+                  value={lang}
+                  onChange={setLang}
+                  options={[
+                    { value: 'tr', label: 'Türkçe' },
+                    { value: 'en', label: 'English' },
+                  ]}
+                />
+              </div>
+              <p className="mt-4 rounded-card bg-surface p-4 text-[14.5px] leading-relaxed text-muted shadow-card">
+                {t('disclaimer')}
               </p>
               <div className="mt-auto pt-8">
                 <Button size="lg" className="w-full" onClick={() => setStep('pin')}>
-                  Başla <ArrowRight size={18} weight="bold" />
+                  {t('start')} <ArrowRight size={18} weight="bold" />
                 </Button>
               </div>
             </Intro>
@@ -117,8 +129,8 @@ export function Onboarding() {
           {step === 'pin' && (
             <div className="flex flex-1 flex-col justify-center">
               <PinPad
-                title="PIN kodu belirle"
-                sub="6 haneli. Verilerin bununla şifrelenir."
+                title={t('setPin')}
+                sub={t('setPinSub')}
                 value={pin}
                 onChange={(v) => {
                   setPinError(null)
@@ -126,24 +138,24 @@ export function Onboarding() {
                 }}
                 error={pinError}
               />
-              <p className="mt-8 text-center text-[13px] text-muted">PIN'i unutursan veriler kurtarılamaz. Düzenli yedek al.</p>
+              <p className="mt-8 text-center text-[13px] text-muted">{t('pinWarning')}</p>
             </div>
           )}
 
           {step === 'pin2' && (
             <div className="flex flex-1 flex-col justify-center">
-              <PinPad title="PIN kodunu tekrarla" sub="Aynı 6 haneyi gir" value={pin2} onChange={setPin2} />
+              <PinPad title={t('repeatPin')} sub={t('repeatPinSub')} value={pin2} onChange={setPin2} />
             </div>
           )}
 
           {step === 'key' && (
             <Intro
               icon={<Key size={30} weight="duotone" />}
-              title="Claude API anahtarı"
-              text="Seanslar için Claude'a bu anahtarla bağlanılır. Anahtar sadece bu telefonda, şifreli saklanır."
+              title={t('keyTitle')}
+              text={t('keyText')}
             >
               <div className="mt-6">
-                <Field label="API anahtarı" hint="console.anthropic.com > API Keys bölümünden kopyala.">
+                <Field label={t('keyLabel')} hint={t('keyHint')}>
                   <input
                     className={inputClass}
                     value={apiKey}
@@ -168,10 +180,10 @@ export function Onboarding() {
                   disabled={!apiKey.trim().startsWith('sk-') || keyState === 'checking'}
                   onClick={verifyKey}
                 >
-                  {keyState === 'checking' ? 'Kontrol ediliyor…' : keyState === 'ok' ? <><CheckCircle size={20} weight="fill" /> Bağlandı</> : 'Bağlan'}
+                  {keyState === 'checking' ? t('checking') : keyState === 'ok' ? <><CheckCircle size={20} weight="fill" /> {t('connected')}</> : t('connect')}
                 </Button>
                 <Button variant="ghost" className="w-full" onClick={() => setStep('import')}>
-                  Sonra ekle
+                  {t('later')}
                 </Button>
               </div>
             </Intro>
@@ -180,25 +192,24 @@ export function Onboarding() {
           {step === 'import' && (
             <Intro
               icon={<FileArrowUp size={30} weight="duotone" />}
-              title="Dosyalarını aktar"
-              text="Bilgisayardaki seanslardan devam etmek için Danisan_Dosyasi.md ve Seans_XX_Rapor.md dosyalarını seç."
+              title={t('importTitle')}
+              text={t('importText')}
             >
               <label className="mt-6 flex h-[52px] cursor-pointer items-center justify-center gap-2 rounded-full bg-accent-soft text-[16px] font-medium text-accent-deep active:scale-[0.98]">
                 <FileArrowUp size={20} weight="bold" />
-                Dosyaları seç
+                {t('chooseFiles')}
                 <input type="file" accept=".md,text/markdown,text/plain" multiple hidden onChange={(e) => void onFiles(e.target.files)} />
               </label>
               <div className="mt-5 space-y-2">
-                <Imported ok={!!clientFile} text="Danışan dosyası" />
-                <Imported ok={reports.length > 0} text={reports.length ? `${reports.length} seans raporu` : 'Seans raporları'} />
+                <Imported ok={!!clientFile} text={t('clientFile')} />
+                <Imported ok={reports.length > 0} text={reports.length ? t('reportsCount', { n: reports.length }) : t('sessionReports')} />
               </div>
               <p className="mt-5 text-[13.5px] leading-relaxed text-muted">
-                Dosyaları telefona almak için kendine WhatsApp ya da e-posta ile gönderip "Dosyalar"a kaydedebilirsin. Bu adımı atlayıp
-                sıfırdan da başlayabilirsin.
+                {t('importHelp')}
               </p>
               <div className="mt-auto pt-8">
                 <Button size="lg" className="w-full" disabled={saving} onClick={finish}>
-                  {saving ? 'Şifreleniyor…' : clientFile || reports.length ? 'Tamamla' : 'Dosyasız başla'}
+                  {saving ? t('encrypting') : clientFile || reports.length ? t('finish') : t('startEmpty')}
                 </Button>
               </div>
             </Intro>

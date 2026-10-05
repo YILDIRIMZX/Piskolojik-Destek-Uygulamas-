@@ -6,6 +6,7 @@ import { renderMarkdown } from '../lib/markdown'
 import { useV } from '../lib/store'
 import { useNav } from '../nav'
 import { extractCycle } from './sessionLogic'
+import { t } from '../lib/i18n'
 
 const chevron = <CaretRight size={16} className="text-muted" />
 
@@ -14,39 +15,39 @@ export function Files() {
   const nav = useNav()
   return (
     <div className="pt-safe mx-auto max-w-xl px-4 pb-32">
-      <h1 className="pt-2 pb-5 text-[30px] leading-tight font-[680] tracking-[-0.03em]">Dosyam</h1>
+      <h1 className="pt-2 pb-5 text-[30px] leading-tight font-[680] tracking-[-0.03em]">{t('files')}</h1>
       <Group>
         <Row
           icon={<IdentificationCard size={18} weight="bold" />}
-          title="Danışan dosyası"
-          sub={v.clientFile ? 'Seanslarla birlikte güncellenir' : 'Henüz yok'}
+          title={t('clientFile')}
+          sub={v.clientFile ? t('clientFileSub') : t('none')}
           onClick={() => nav.go({ name: 'clientFile' })}
           trailing={chevron}
         />
         <Row
           icon={<ArrowsClockwise size={18} weight="bold" />}
-          title="Döngüm"
-          sub={v.cycle.length ? `${v.cycle.length} adım` : 'Henüz çıkarılmadı'}
+          title={t('cycle')}
+          sub={v.cycle.length ? t('cycleSteps', { n: v.cycle.length }) : t('cycleNone')}
           onClick={() => nav.go({ name: 'cycle' })}
           trailing={chevron}
         />
       </Group>
 
       {v.reports.length ? (
-        <Group title="Seans raporları">
+        <Group title={t('sessionReports')}>
           {v.reports.map((r) => (
             <Row
               key={r.id}
               icon={<FileText size={18} weight="bold" />}
               title={r.title}
-              sub={`Seans ${r.no} · ${r.date}`}
+              sub={t('reportSub', { n: r.no, d: r.date })}
               onClick={() => nav.go({ name: 'report', id: r.id })}
               trailing={chevron}
             />
           ))}
         </Group>
       ) : (
-        <Empty icon={<FileText size={26} weight="bold" />} title="Henüz rapor yok" text="Her seansın sonunda bir rapor hazırlanır ve burada saklanır." />
+        <Empty icon={<FileText size={26} weight="bold" />} title={t('noReports')} text={t('noReportsText')} />
       )}
     </div>
   )
@@ -57,11 +58,11 @@ export function ReportView({ id }: { id: string }) {
   const nav = useNav()
   const r = v.reports.find((x) => x.id === id)
   return (
-    <Screen title={r ? `Seans ${r.no}` : 'Rapor'} onBack={nav.back}>
+    <Screen title={r ? t('sessionN', { n: r.no }) : t('report')} onBack={nav.back}>
       {r ? (
         <article className="prose-seans rounded-card bg-surface p-5 shadow-card" dangerouslySetInnerHTML={{ __html: renderMarkdown(r.markdown) }} />
       ) : (
-        <p className="text-muted">Rapor bulunamadı.</p>
+        <p className="text-muted">{t('reportNotFound')}</p>
       )}
     </Screen>
   )
@@ -71,14 +72,14 @@ export function ClientFile() {
   const v = useV()
   const nav = useNav()
   return (
-    <Screen title="Danışan dosyası" onBack={nav.back}>
+    <Screen title={t('clientFile')} onBack={nav.back}>
       {v.clientFile ? (
         <article className="prose-seans rounded-card bg-surface p-5 shadow-card" dangerouslySetInnerHTML={{ __html: renderMarkdown(v.clientFile) }} />
       ) : (
         <Empty
           icon={<IdentificationCard size={26} weight="bold" />}
-          title="Dosya henüz yok"
-          text="İlk seansının sonunda oluşturulur. Ayarlar'dan bilgisayardaki dosyanı da aktarabilirsin."
+          title={t('noClientFile')}
+          text={t('noClientFileText')}
         />
       )}
     </Screen>
@@ -98,16 +99,16 @@ export function Cycle() {
     try {
       await extractCycle()
     } catch (e) {
-      setError(e instanceof Error && e.message.startsWith('Döngü') ? e.message : describeError(e))
+      setError(e instanceof Error && e.message === t('cycleFailed') ? e.message : describeError(e))
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <Screen title="Döngüm" onBack={nav.back}>
+    <Screen title={t('cycle')} onBack={nav.back}>
       <p className="-mt-2 mb-6 text-[15px] leading-snug text-muted">
-        Tekrar eden örüntün adım adım. Her adımda bir çıkış yolu var. Döngüyü bir yerde kırmak, sonrasını değiştirir.
+        {t('cycleIntro')}
       </p>
       {v.cycle.length > 0 ? (
         <ol className="relative">
@@ -130,13 +131,13 @@ export function Cycle() {
       ) : (
         <Empty
           icon={<ArrowsClockwise size={26} weight="bold" />}
-          title="Döngü henüz çıkarılmadı"
-          text={canExtract ? 'Dosyandan ve raporlarından döngünü çıkarabilirim.' : 'Seanslar ilerledikçe burada döngün oluşacak.'}
+          title={t('cycleEmpty')}
+          text={canExtract ? t('cycleCanExtract') : t('cycleWillForm')}
         />
       )}
       {canExtract && (
         <Button variant={v.cycle.length ? 'secondary' : 'primary'} size="lg" className="mt-4 w-full" disabled={busy} onClick={run}>
-          {busy ? 'Çıkarılıyor…' : v.cycle.length ? 'Döngüyü yeniden çıkar' : 'Döngümü çıkar'}
+          {busy ? t('extracting') : v.cycle.length ? t('reextract') : t('extract')}
         </Button>
       )}
       {error && <p className="mt-3 text-center text-[14px] text-danger">{error}</p>}

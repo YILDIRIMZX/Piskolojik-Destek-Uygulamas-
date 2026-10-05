@@ -1,12 +1,13 @@
 import { BookOpenText, ChatsCircle, NotePencil, SunHorizon } from '@phosphor-icons/react'
 import type { Tab } from '../nav'
 import { cx } from './ui'
+import { t, type Key } from '../lib/i18n'
 
-const TABS: { id: Tab; label: string; Icon: typeof SunHorizon }[] = [
-  { id: 'home', label: 'Bugün', Icon: SunHorizon },
-  { id: 'sessions', label: 'Seans', Icon: ChatsCircle },
-  { id: 'journal', label: 'Günlük', Icon: NotePencil },
-  { id: 'files', label: 'Dosyam', Icon: BookOpenText },
+const TABS: { id: Tab; label: Key; Icon: typeof SunHorizon }[] = [
+  { id: 'home', label: 'tabHome', Icon: SunHorizon },
+  { id: 'sessions', label: 'tabSessions', Icon: ChatsCircle },
+  { id: 'journal', label: 'tabJournal', Icon: NotePencil },
+  { id: 'files', label: 'tabFiles', Icon: BookOpenText },
 ]
 
 export function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void }) {
@@ -26,7 +27,7 @@ export function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) =
               )}
             >
               <Icon size={23} weight={on ? 'fill' : 'regular'} />
-              {label}
+              {t(label)}
             </button>
           )
         })}

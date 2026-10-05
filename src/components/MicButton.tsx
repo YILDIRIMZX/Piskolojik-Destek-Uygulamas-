@@ -3,8 +3,8 @@ import { useState, type RefObject } from 'react'
 import { useDictation } from '../lib/speech'
 import { useV } from '../lib/store'
 import { cx } from './ui'
+import { t } from '../lib/i18n'
 
-export const KEYBOARD_HINT = 'Klavyedeki mikrofon tuşuna basıp konuş.'
 
 /**
  * Dictation button for a text field. Uses in-app recognition when enabled in settings;
@@ -35,13 +35,13 @@ export function MicButton({
     else d.start(value)
   }
 
-  const message = d.error ?? (hint && !d.supported ? KEYBOARD_HINT : null)
+  const message = d.error ?? (hint && !d.supported ? t('keyboardHint') : null)
 
   return (
     <div className="flex flex-col items-end">
       <button
         type="button"
-        aria-label={d.listening ? 'Dinlemeyi durdur' : 'Konuşarak yaz'}
+        aria-label={d.listening ? t('stopListening') : t('dictate')}
         onClick={onClick}
         className={cx(
           'relative grid shrink-0 place-items-center rounded-full transition-[transform,background-color] active:scale-90',

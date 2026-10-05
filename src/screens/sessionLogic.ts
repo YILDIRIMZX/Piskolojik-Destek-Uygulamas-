@@ -1,6 +1,7 @@
 import { addUsage, extractTag, streamReply, toApiMessages } from '../lib/claude'
 import { reportFromMarkdown } from '../lib/files'
-import { CYCLE_INSTRUCTION, OPENING, REPORT_INSTRUCTION, buildSystemPrompt, closingInstruction, timeTag } from '../lib/prompts'
+import { getLang, t, type Lang } from '../lib/i18n'
+import { CYCLE_INSTRUCTION, CYCLE_SYSTEM, OPENING, buildSystemPrompt, closingInstruction, reportInstruction, timeTag } from '../lib/prompts'
 import { getVault, update } from '../lib/store'
 import { emptyUsage, uid, type ChatMessage, type CycleStep, type Session, type Vault } from '../lib/types'
 
@@ -16,16 +17,21 @@ const patchSession = (id: string, fn: (s: Session) => Session) =>
 
 const sessionById = (id: string) => getVault()?.sessions.find((s) => s.id === id)
 
+const langOf = (s: Session): Lang => s.lang ?? 'tr'
+
 export function createSession(): string {
   const v = getVault()!
   const no = nextSessionNo(v)
+  const lang = getLang()
   const s: Session = {
+    lang,
     id: uid(),
     no,
     model: v.settings.model,
     startedAt: Date.now(),
     activeMs: 0,
     systemPrompt: buildSystemPrompt({
+      lang,
       sessionNo: no,
       clientFile: v.clientFile,
       lastReport: [...v.reports].sort((a, b) => b.no - a.no)[0],
@@ -59,7 +65,7 @@ export async function send(
     id: uid(),
     role: 'user',
     text,
-    apiText: text + timeTag(remainingMinutes(s)),
+    apiText: text + timeTag(remainingMinutes(s), langOf(s)),
     ts: Date.now(),
     hidden: opts.hidden,
   }
@@ -85,11 +91,15 @@ export async function reply(id: string, opts: { onText?: (t: string) => void; si
   return res.text
 }
 
-export const start = (id: string, onText?: (t: string) => void) => send(id, OPENING, { hidden: true, onText })
+export const start = (id: string, onText?: (t: string) => void) => {
+  const s = sessionById(id)
+  return send(id, OPENING[s ? langOf(s) : getLang()], { hidden: true, onText })
+}
 
 export async function close(id: string, byUser: boolean, onText?: (t: string) => void) {
   patchSession(id, (s) => ({ ...s, status: 'closing' }))
-  await send(id, closingInstruction(byUser), { hidden: true, onText })
+  const s = sessionById(id)
+  await send(id, closingInstruction(byUser, s ? langOf(s) : getLang()), { hidden: true, onText })
 }
 
 /** Asks for the report, the updated client file and the cycle. Moves the session to review. */
@@ -105,14 +115,14 @@ export async function generateReport(id: string) {
       ...toApiMessages(s.messages),
       {
         role: 'user',
-        content: `${REPORT_INSTRUCTION}\n\nSeans numarası: ${s.no}. Tarih: ${new Date(s.startedAt).toISOString().slice(0, 10)}. Gerçekleşen süre: yaklaşık ${Math.round(s.activeMs / 60000)} dk.`,
+        content: reportInstruction(langOf(s), s.no, new Date(s.startedAt).toISOString().slice(0, 10), Math.round(s.activeMs / 60000)),
       },
     ],
     maxTokens: 24000,
   })
   const report = extractTag(res.text, 'rapor')
   const clientFile = extractTag(res.text, 'danisan_dosyasi')
-  if (!report || !clientFile) throw new Error('Rapor beklenen biçimde gelmedi.')
+  if (!report || !clientFile) throw new Error(t('errReportFormat'))
   patchSession(id, (x) => ({
     ...x,
     status: 'review',
@@ -164,11 +174,11 @@ export async function extractCycle() {
   const res = await streamReply({
     apiKey: v.apiKey,
     model: v.settings.model,
-    system: 'Sen kanıta dayalı çalışan bir psikolojik danışmansın. Türkçe yazarsın.',
+    system: CYCLE_SYSTEM[getLang()],
     messages: [
       {
         role: 'user',
-        content: `${CYCLE_INSTRUCTION}\n\n<danisan_dosyasi>\n${v.clientFile}\n</danisan_dosyasi>\n\n${v.reports
+        content: `${CYCLE_INSTRUCTION[getLang()]}\n\n<danisan_dosyasi>\n${v.clientFile}\n</danisan_dosyasi>\n\n${v.reports
           .slice(0, 3)
           .map((r) => `<rapor>\n${r.markdown}\n</rapor>`)
           .join('\n\n')}`,
@@ -177,6 +187,6 @@ export async function extractCycle() {
     maxTokens: 6000,
   })
   const cycle = parseCycle(extractTag(res.text, 'dongu'))
-  if (!cycle.length) throw new Error('Döngü çıkarılamadı.')
+  if (!cycle.length) throw new Error(t('cycleFailed'))
   update((x) => ({ ...x, cycle }))
 }

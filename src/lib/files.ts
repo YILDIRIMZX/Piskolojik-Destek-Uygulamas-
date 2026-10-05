@@ -1,3 +1,4 @@
+import { t } from './i18n'
 import type { Report, Vault } from './types'
 import { uid } from './types'
 
@@ -7,11 +8,11 @@ export async function importMarkdownFiles(files: FileList | File[]) {
   const reports: Report[] = []
   for (const f of Array.from(files)) {
     const text = await f.text()
-    const num = f.name.match(/seans[_\s-]*0*(\d+)/i)
-    if (/danisan|danışan/i.test(f.name) || /^#\s*Danışan Dosyası/m.test(text)) {
+    const num = f.name.match(/(?:seans|session)[_\s-]*0*(\d+)/i)
+    if (/danisan|danışan|client/i.test(f.name) || /^#\s*(Danışan Dosyası|Client File)/im.test(text)) {
       clientFile = text
-    } else if (num || /^#\s*Seans\s+\d+/m.test(text)) {
-      const no = Number(num?.[1] ?? text.match(/^#\s*Seans\s+(\d+)/m)?.[1] ?? 0)
+    } else if (num || /^#\s*(Seans|Session)\s+\d+/im.test(text)) {
+      const no = Number(num?.[1] ?? text.match(/^#\s*(?:Seans|Session)\s+(\d+)/im)?.[1] ?? 0)
       reports.push(reportFromMarkdown(text, no))
     }
   }
@@ -19,8 +20,9 @@ export async function importMarkdownFiles(files: FileList | File[]) {
 }
 
 export function reportFromMarkdown(markdown: string, no: number): Report {
-  const title = markdown.match(/^#\s*Seans\s+\d+\s*Raporu\s*[:—–-]\s*(.+)$/m)?.[1]?.trim() ?? `Seans ${no}`
-  const date = markdown.match(/\*\*Tarih:\*\*\s*([\d-]+)/)?.[1] ?? new Date().toISOString().slice(0, 10)
+  const title =
+    markdown.match(/^#\s*(?:Seans\s+\d+\s*Raporu|Session\s+\d+\s*Report)\s*[:—–-]\s*(.+)$/im)?.[1]?.trim() ?? t('sessionN', { n: no })
+  const date = markdown.match(/\*\*(?:Tarih|Date):\*\*\s*([\d-]+)/)?.[1] ?? new Date().toISOString().slice(0, 10)
   return { id: uid(), no, date, title, markdown }
 }
 
@@ -71,6 +73,6 @@ export function exportBackup(v: Vault) {
 
 export async function readBackup(file: File): Promise<Partial<Vault>> {
   const data = JSON.parse(await file.text())
-  if (data?.version !== 1) throw new Error('Bu dosya bir Seans yedeği değil.')
+  if (data?.version !== 1) throw new Error(t('notBackup'))
   return data
 }

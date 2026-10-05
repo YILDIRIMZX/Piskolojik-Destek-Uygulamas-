@@ -2,7 +2,6 @@ import { ArrowUp, CaretLeft, Headphones, Microphone, SpeakerHigh, SpeakerSlash, 
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { EmergencyButton } from '../components/Emergency'
-import { KEYBOARD_HINT } from '../components/MicButton'
 import { Button, Sheet, cx } from '../components/ui'
 import { describeError } from '../lib/claude'
 import { renderMarkdown } from '../lib/markdown'
@@ -12,6 +11,7 @@ import { flush, update, useV } from '../lib/store'
 import { useNav } from '../nav'
 import { fmtUsd } from './Sessions'
 import { addActiveTime, close, generateReport, remainingMinutes, reply, send, start } from './sessionLogic'
+import { t } from '../lib/i18n'
 
 const TICK_MS = 5000
 
@@ -143,7 +143,7 @@ export function SessionChat({ id }: { id: string }) {
       await flush()
       nav.go({ name: 'review', id })
     } catch (e) {
-      setError(describeError(e) + ' Rapor hazırlanamadı.')
+      setError(`${describeError(e)} ${t('reportFailed')}`)
     } finally {
       setReporting(false)
     }
@@ -159,14 +159,14 @@ export function SessionChat({ id }: { id: string }) {
     <div className="flex h-[100dvh] flex-col">
       <header className="glass pt-safe z-20 border-b border-line">
         <div className="mx-auto flex h-12 max-w-xl items-center gap-2 px-3">
-          <button onClick={() => { dictation.stop(); stopAll(); nav.back() }} aria-label="Geri" className="grid size-9 place-items-center rounded-full text-accent">
+          <button onClick={() => { dictation.stop(); stopAll(); nav.back() }} aria-label={t('back')} className="grid size-9 place-items-center rounded-full text-accent">
             <CaretLeft size={22} weight="bold" />
           </button>
           <div className="min-w-0 flex-1">
-            <p className="text-[16px] leading-tight font-[650]">Seans {s.no}</p>
+            <p className="text-[16px] leading-tight font-[650]">{t('sessionN', { n: s.no })}</p>
             <p className="flex items-center gap-1 text-[12.5px] text-muted">
               <Timer size={13} weight="bold" />
-              {s.status === 'active' ? `${remaining} dk kaldı` : 'Kapanış'}
+              {s.status === 'active' ? t('minLeft', { n: remaining }) : t('closingLabel')}
             </p>
           </div>
           <EmergencyButton onClick={nav.openEmergency} />
@@ -191,7 +191,7 @@ export function SessionChat({ id }: { id: string }) {
               {!reporting && (
                 <div className="mt-3">
                   <Button size="sm" variant="secondary" onClick={closed ? makeReport : retry}>
-                    Tekrar dene
+                    {t('retry')}
                   </Button>
                 </div>
               )}
@@ -200,25 +200,25 @@ export function SessionChat({ id }: { id: string }) {
 
           {timeUp && !busy && (
             <div className="my-4 rounded-card bg-accent-soft p-4">
-              <p className="text-[15.5px] font-[620] text-accent-deep">Süre doldu</p>
-              <p className="mt-1 text-[14.5px] text-accent-deep/80">Son sözlerini söyleyebilir ya da seansı şimdi kapatabilirsin.</p>
+              <p className="text-[15.5px] font-[620] text-accent-deep">{t('timeUp')}</p>
+              <p className="mt-1 text-[14.5px] text-accent-deep/80">{t('timeUpText')}</p>
               <Button size="sm" className="mt-3" onClick={endSession}>
-                Seansı kapat
+                {t('closeSession')}
               </Button>
             </div>
           )}
 
           {closed && (
             <div className="my-5 rounded-card bg-surface p-5 shadow-card">
-              <p className="text-[17px] font-[650]">Seans kapandı</p>
+              <p className="text-[17px] font-[650]">{t('sessionClosed')}</p>
               <p className="mt-1 text-[14.5px] text-muted">
-                Şimdi raporu, güncellenmiş dosyanı ve döngünü hazırlayayım. Kaydetmeden önce okuyup onaylayacaksın.
+                {t('sessionClosedText')}
               </p>
-              <p className="mt-2 text-[13px] text-muted">Bu seansın maliyeti şimdiye kadar: {fmtUsd(s.usage.usd)}</p>
+              <p className="mt-2 text-[13px] text-muted">{t('costSoFar', { n: fmtUsd(s.usage.usd) })}</p>
               <Button size="lg" className="mt-4 w-full" disabled={reporting} onClick={makeReport}>
-                {reporting ? 'Rapor hazırlanıyor…' : 'Raporu hazırla'}
+                {reporting ? t('makingReport') : t('makeReport')}
               </Button>
-              {reporting && <p className="mt-2 text-center text-[13px] text-muted">Bu bir dakika kadar sürebilir.</p>}
+              {reporting && <p className="mt-2 text-center text-[13px] text-muted">{t('takesAMinute')}</p>}
             </div>
           )}
         </div>
@@ -228,16 +228,16 @@ export function SessionChat({ id }: { id: string }) {
         <footer className="glass pb-safe z-20 border-t border-line">
           <div className="mx-auto max-w-xl px-3 pt-2.5">
             <div className="mb-2 flex items-center gap-2">
-              <Chip on={readAloud} onClick={() => { primeAudio(); setSetting({ readAloud: !readAloud }) }} label="Sesli oku">
+              <Chip on={readAloud} onClick={() => { primeAudio(); setSetting({ readAloud: !readAloud }) }} label={t('readAloudChip')}>
                 {readAloud ? <SpeakerHigh size={15} weight="bold" /> : <SpeakerSlash size={15} weight="bold" />}
               </Chip>
               {dictation.supported && (
-                <Chip on={handsFree} onClick={() => setSetting({ handsFree: !handsFree })} label="Eller serbest">
+                <Chip on={handsFree} onClick={() => setSetting({ handsFree: !handsFree })} label={t('handsFree')}>
                   <Headphones size={15} weight="bold" />
                 </Chip>
               )}
               <button onClick={() => setEndSheet(true)} className="ml-auto h-8 shrink-0 rounded-full px-3 text-[13.5px] whitespace-nowrap font-medium text-muted active:bg-surface-2">
-                Seansı bitir
+                {t('endSession')}
               </button>
             </div>
             <div className="flex items-end gap-2">
@@ -247,8 +247,8 @@ export function SessionChat({ id }: { id: string }) {
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   rows={1}
-                  placeholder={dictation.listening ? 'Dinliyorum…' : 'Yaz ya da mikrofona dokun'}
-                  aria-label="Mesajın"
+                  placeholder={dictation.listening ? t('listening') : t('typeOrTap')}
+                  aria-label={t('yourMessage')}
                   className="no-scrollbar max-h-40 w-full resize-none bg-transparent text-[16px] leading-snug outline-none placeholder:text-muted [field-sizing:content]"
                 />
               </div>
@@ -263,7 +263,7 @@ export function SessionChat({ id }: { id: string }) {
                     dictation.start(draft)
                   }
                 }}
-                aria-label={dictation.listening ? 'Dinlemeyi durdur' : 'Konuşarak yaz'}
+                aria-label={dictation.listening ? t('stopListening') : t('dictate')}
                 className={cx(
                   'relative grid size-11 shrink-0 place-items-center rounded-full transition-colors active:scale-90',
                   dictation.listening ? 'bg-danger text-white' : 'bg-accent-soft text-accent',
@@ -275,29 +275,29 @@ export function SessionChat({ id }: { id: string }) {
               <button
                 onClick={() => void submit(draft)}
                 disabled={!draft.trim() || busy}
-                aria-label="Gönder"
+                aria-label={t('send')}
                 className="grid size-11 shrink-0 place-items-center rounded-full bg-accent text-accent-ink transition-[transform,opacity] active:scale-90 disabled:opacity-35"
               >
                 <ArrowUp size={20} weight="bold" />
               </button>
             </div>
             {dictation.error && <p className="mt-1.5 text-[12.5px] text-danger">{dictation.error}</p>}
-            {!dictation.error && kbHint && !dictation.supported && <p className="mt-1.5 text-[12.5px] text-muted">{KEYBOARD_HINT}</p>}
+            {!dictation.error && kbHint && !dictation.supported && <p className="mt-1.5 text-[12.5px] text-muted">{t('keyboardHint')}</p>}
           </div>
         </footer>
       )}
 
-      <Sheet open={endSheet} onClose={() => setEndSheet(false)} title="Seansı bitir">
+      <Sheet open={endSheet} onClose={() => setEndSheet(false)} title={t('endSession')}>
         <p className="text-[15.5px] leading-relaxed text-muted">
-          {remaining > 0 ? `${remaining} dakika daha var. ` : ''}Bitirmek istemen gayet normal. Danışmanın kısa bir kapanış yapacak, sonra raporu
-          hazırlayacağız.
+          {remaining > 0 ? `${t('minutesRemain', { n: remaining })} ` : ''}
+          {t('endText')}
         </p>
         <div className="mt-6 mb-2 space-y-2">
           <Button size="lg" className="w-full" onClick={endSession}>
-            Kapanışa geç
+            {t('goToClosing')}
           </Button>
           <Button size="lg" variant="secondary" className="w-full" onClick={() => setEndSheet(false)}>
-            Devam et
+            {t('continue')}
           </Button>
         </div>
       </Sheet>
@@ -311,7 +311,7 @@ export function SessionChat({ id }: { id: string }) {
             className="pointer-events-none fixed inset-x-0 bottom-36 z-30 flex justify-center"
           >
             <span className="glass rounded-full border border-line px-4 py-2 text-[13.5px] text-muted shadow-card">
-              Dinliyorum. Sustuğunda gönderilecek.
+              {t('handsFreeHint')}
             </span>
           </motion.div>
         )}
@@ -336,7 +336,7 @@ function Bubble({ role, text, live, onSpeak }: { role: 'user' | 'assistant'; tex
         dangerouslySetInnerHTML={{ __html: renderMarkdown(text) }}
       />
       {onSpeak && !live && (
-        <button onClick={onSpeak} aria-label="Sesli oku" className="mt-1 -ml-1.5 grid size-8 place-items-center rounded-full text-muted active:bg-surface-2">
+        <button onClick={onSpeak} aria-label={t('readAloud')} className="mt-1 -ml-1.5 grid size-8 place-items-center rounded-full text-muted active:bg-surface-2">
           <SpeakerHigh size={16} />
         </button>
       )}
@@ -346,7 +346,7 @@ function Bubble({ role, text, live, onSpeak }: { role: 'user' | 'assistant'; tex
 
 function Thinking() {
   return (
-    <div className="mb-5 flex h-6 items-center gap-1.5" aria-label="Danışman düşünüyor">
+    <div className="mb-5 flex h-6 items-center gap-1.5" aria-label={t('thinking')}>
       {[0, 1, 2].map((i) => (
         <span key={i} className="size-2 animate-pulse rounded-full bg-accent/60" style={{ animationDelay: `${i * 180}ms` }} />
       ))}
