@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { PIN_LENGTH, PinPad } from '../components/PinPad'
 import { Button, Field, Group, Row, Screen, Segmented, Sheet, Toggle, inputClass } from '../components/ui'
 import { checkKey, describeError } from '../lib/claude'
-import { exportBackup, exportMarkdown, importMarkdownFiles, mergeReports, readBackup } from '../lib/files'
+import { exportBackup, exportMarkdown, importMarkdownFiles, isBackupFile, mergeReports, readBackup } from '../lib/files'
 import { AZURE_VOICES, setLang, t, useLang, type Lang } from '../lib/i18n'
 import { canRecognize, canSpeak, isEnhancedVoice, isIOSStandalone, langVoices, speak } from '../lib/speech'
 import { changePin, lock, update, useV, wipe } from '../lib/store'
@@ -38,6 +38,8 @@ export function Settings() {
 
   const onImport = async (files: FileList | null) => {
     if (!files?.length) return
+    // A backup chosen here is restored rather than ignored.
+    if (Array.from(files).some(isBackupFile)) return onRestore(files)
     const res = await importMarkdownFiles(files)
     update((x) => ({
       ...x,
@@ -49,7 +51,7 @@ export function Settings() {
   }
 
   const onRestore = async (files: FileList | null) => {
-    const f = files?.[0]
+    const f = files ? Array.from(files).find(isBackupFile) ?? files[0] : undefined
     if (!f) return
     try {
       const data = await readBackup(f)
@@ -161,7 +163,7 @@ export function Settings() {
             <span className="block text-[16px]">{t('importFiles')}</span>
             <span className="block text-[13.5px] text-muted">{t('importFilesSub')}</span>
           </span>
-          <input type="file" accept=".md,text/markdown,text/plain" multiple hidden onChange={(e) => void onImport(e.target.files)} />
+          <input type="file" multiple hidden onChange={(e) => void onImport(e.target.files)} />
         </label>
         <Row icon={<Export size={18} weight="bold" />} title={t('exportFiles')} sub={t('exportFilesSub')} onClick={() => void exportMarkdown(v)} />
         <Row icon={<DownloadSimple size={18} weight="bold" />} title={t('backup')} sub={t('backupSub')} onClick={() => void exportBackup(v)} />
@@ -173,7 +175,7 @@ export function Settings() {
             <span className="block text-[16px]">{t('restore')}</span>
             <span className="block text-[13.5px] text-muted">{t('restoreSub')}</span>
           </span>
-          <input type="file" accept=".json,application/json" hidden onChange={(e) => void onRestore(e.target.files)} />
+          <input type="file" hidden onChange={(e) => void onRestore(e.target.files)} />
         </label>
       </Group>
 
