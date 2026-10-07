@@ -71,6 +71,9 @@ export function exportBackup(v: Vault) {
   return shareOrDownload([new File([JSON.stringify(rest, null, 2)], name, { type: 'application/json' })])
 }
 
+/** Backups are JSON; iOS may report an empty MIME type, so the name is checked too. */
+export const isBackupFile = (f: File) => /\.json$/i.test(f.name) || f.type.includes('json')
+
 export async function readBackup(file: File): Promise<Partial<Vault>> {
   const data = JSON.parse(await file.text())
   if (data?.version !== 1) throw new Error(t('notBackup'))

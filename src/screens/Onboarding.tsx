@@ -4,9 +4,9 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { PIN_LENGTH, PinPad } from '../components/PinPad'
 import { Button, Field, Segmented, inputClass } from '../components/ui'
 import { checkKey, describeError } from '../lib/claude'
-import { importMarkdownFiles, mergeReports } from '../lib/files'
+import { importMarkdownFiles, isBackupFile, mergeReports, readBackup } from '../lib/files'
 import { createVault } from '../lib/store'
-import { newVault, type Report } from '../lib/types'
+import { newVault, type Report, type Vault } from '../lib/types'
 import { setLang, t, useLang, type Lang } from '../lib/i18n'
 
 type Step = 'install' | 'welcome' | 'pin' | 'pin2' | 'key' | 'import'
@@ -27,6 +27,8 @@ export function Onboarding() {
   const [clientFile, setClientFile] = useState('')
   const [reports, setReports] = useState<Report[]>([])
   const [saving, setSaving] = useState(false)
+  const [backup, setBackup] = useState<Partial<Vault> | null>(null)
+  const [fileError, setFileError] = useState<string | null>(null)
 
   useEffect(() => {
     if (step === 'pin' && pin.length === PIN_LENGTH) setTimeout(() => setStep('pin2'), 150)
@@ -57,14 +59,33 @@ export function Onboarding() {
 
   const onFiles = async (files: FileList | null) => {
     if (!files?.length) return
-    const res = await importMarkdownFiles(files)
+    setFileError(null)
+    const list = Array.from(files)
+    const json = list.find(isBackupFile)
+    if (json) {
+      try {
+        const data = await readBackup(json)
+        setBackup(data)
+        if (data.clientFile) setClientFile(data.clientFile)
+        if (data.reports) setReports(data.reports)
+      } catch (e) {
+        setFileError(e instanceof Error ? e.message : t('restoreFailed'))
+      }
+    }
+    const res = await importMarkdownFiles(list.filter((f) => !isBackupFile(f)))
     if (res.clientFile) setClientFile(res.clientFile)
     setReports((r) => mergeReports(r, res.reports))
   }
 
   const finish = async () => {
     setSaving(true)
-    await createVault(pin, { ...newVault(), apiKey: apiKey.trim(), clientFile, reports })
+    const base = newVault()
+    await createVault(
+      pin,
+      backup
+        ? { ...base, ...backup, apiKey: apiKey.trim(), settings: { ...base.settings, ...backup.settings }, profileSkipped: true }
+        : { ...base, apiKey: apiKey.trim(), clientFile, reports },
+    )
   }
 
   return (
@@ -198,9 +219,11 @@ export function Onboarding() {
               <label className="mt-6 flex h-[52px] cursor-pointer items-center justify-center gap-2 rounded-full bg-accent-soft text-[16px] font-medium text-accent-deep active:scale-[0.98]">
                 <FileArrowUp size={20} weight="bold" />
                 {t('chooseFiles')}
-                <input type="file" accept=".md,text/markdown,text/plain" multiple hidden onChange={(e) => void onFiles(e.target.files)} />
+                <input type="file" multiple hidden onChange={(e) => void onFiles(e.target.files)} />
               </label>
               <div className="mt-5 space-y-2">
+                {backup && <Imported ok text={t('backupFound')} />}
+                {fileError && <p className="text-[14px] text-danger">{fileError}</p>}
                 <Imported ok={!!clientFile} text={t('clientFile')} />
                 <Imported ok={reports.length > 0} text={reports.length ? t('reportsCount', { n: reports.length }) : t('sessionReports')} />
               </div>
@@ -209,7 +232,7 @@ export function Onboarding() {
               </p>
               <div className="mt-auto pt-8">
                 <Button size="lg" className="w-full" disabled={saving} onClick={finish}>
-                  {saving ? t('encrypting') : clientFile || reports.length ? t('finish') : t('startEmpty')}
+                  {saving ? t('encrypting') : backup || clientFile || reports.length ? t('finish') : t('startEmpty')}
                 </Button>
               </div>
             </Intro>
