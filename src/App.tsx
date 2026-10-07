@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { EmergencySheet } from './components/Emergency'
 import { TabBar } from './components/TabBar'
 import { Button, Sheet } from './components/ui'
-import { flush, hasVault, lock, useVault, wipe } from './lib/store'
+import { flush, getVault, hasVault, lock, useVault, wipe } from './lib/store'
 import { NavContext, type Nav, type Route, type Tab } from './nav'
 import { ClientFile, Cycle, Files, ReportView } from './screens/Files'
 import { Home } from './screens/Home'
@@ -14,7 +14,8 @@ import { Review } from './screens/Review'
 import { SessionChat } from './screens/SessionChat'
 import { Sessions } from './screens/Sessions'
 import { Settings } from './screens/Settings'
-import { Breathe, Compassion, Underneath } from './screens/Tools'
+import { Personality } from './screens/Personality'
+import { ToolScreen, ToolsLibrary } from './screens/Tools'
 import { t, useLang } from './lib/i18n'
 
 const TABS: Tab[] = ['home', 'sessions', 'journal', 'files']
@@ -73,7 +74,12 @@ export default function App() {
 
 function Shell() {
   const reduce = useReducedMotion()
-  const [stack, setStack] = useState<Route[]>([{ name: 'home' }])
+  // New users without any history start with the personality test (they can skip it).
+  const [stack, setStack] = useState<Route[]>(() => {
+    const v = getVault()
+    const fresh = v && !v.clientFile.trim() && !v.reports.length && !v.profile && !v.profileSkipped
+    return fresh ? [{ name: 'home' }, { name: 'personality', first: true }] : [{ name: 'home' }]
+  })
   const [emergency, setEmergency] = useState(false)
   const [entry, setEntry] = useState(false)
   const route = stack[stack.length - 1]
@@ -98,7 +104,7 @@ function Shell() {
   )
 
   const isRoot = TABS.includes(route.name as Tab)
-  const key = `${stack.length}-${route.name}-${'id' in route ? route.id : ''}`
+  const key = `${stack.length}-${route.name}-${'id' in route ? route.id : 'kind' in route ? route.kind : ''}`
 
   return (
     <NavContext.Provider value={nav}>
@@ -141,14 +147,12 @@ function Screen({ route }: { route: Route }) {
       return <ClientFile />
     case 'cycle':
       return <Cycle />
-    case 'breathe':
-      return <Breathe />
-    case 'compassion':
-      return <Compassion />
-    case 'underneath':
-      return <Underneath />
-    case 'tools':
-      return <Home />
+    case 'tool':
+      return <ToolScreen kind={route.kind} />
+    case 'toolsLibrary':
+      return <ToolsLibrary />
+    case 'personality':
+      return <Personality first={route.first} />
     case 'settings':
       return <Settings />
   }

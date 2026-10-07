@@ -1,11 +1,12 @@
-import { ArrowUp, CaretLeft, Headphones, Microphone, SpeakerHigh, SpeakerSlash, Stop, Timer } from '@phosphor-icons/react'
+import { ArrowUp, CaretLeft, CircleNotch, Headphones, Microphone, SpeakerHigh, SpeakerSlash, Stop, Timer } from '@phosphor-icons/react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { EmergencyButton } from '../components/Emergency'
 import { Button, Sheet, cx } from '../components/ui'
 import { describeError } from '../lib/claude'
 import { renderMarkdown } from '../lib/markdown'
-import { canSpeak, useDictation } from '../lib/speech'
+import { useSpeechInput } from '../lib/dictation'
+import { canSpeak } from '../lib/speech'
 import { azureReady, primeAudio, say, stopAll } from '../lib/voice'
 import { flush, update, useV } from '../lib/store'
 import { useNav } from '../nav'
@@ -29,8 +30,6 @@ export function SessionChat({ id }: { id: string }) {
   const scroller = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const abort = useRef<AbortController | null>(null)
-  const draftRef = useRef('')
-  draftRef.current = draft
 
   const { readAloud, handsFree } = v.settings
   const settingsRef = useRef(v.settings)
@@ -57,13 +56,12 @@ export function SessionChat({ id }: { id: string }) {
     requestAnimationFrame(() => scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: reduce ? 'auto' : 'smooth' }))
   }, [reduce])
 
-  const dictation = useDictation({
+  const dictation = useSpeechInput(v.settings, {
     onText: setDraft,
     autoSendAfterMs: handsFree ? 2200 : undefined,
-    onPause: () => {
-      if (draftRef.current.trim()) void submit(draftRef.current)
+    onPause: (text) => {
+      if (text.trim()) void submit(text)
     },
-    enabled: v.settings.inAppSpeech,
   })
   const [kbHint, setKbHint] = useState(false)
 
@@ -247,7 +245,7 @@ export function SessionChat({ id }: { id: string }) {
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   rows={1}
-                  placeholder={dictation.listening ? t('listening') : t('typeOrTap')}
+                  placeholder={dictation.transcribing ? t('transcribing') : dictation.listening ? t('listening') : t('typeOrTap')}
                   aria-label={t('yourMessage')}
                   className="no-scrollbar max-h-40 w-full resize-none bg-transparent text-[16px] leading-snug outline-none placeholder:text-muted [field-sizing:content]"
                 />
@@ -264,13 +262,20 @@ export function SessionChat({ id }: { id: string }) {
                   }
                 }}
                 aria-label={dictation.listening ? t('stopListening') : t('dictate')}
+                disabled={dictation.transcribing}
                 className={cx(
                   'relative grid size-11 shrink-0 place-items-center rounded-full transition-colors active:scale-90',
                   dictation.listening ? 'bg-danger text-white' : 'bg-accent-soft text-accent',
                 )}
               >
                 {dictation.listening && <span className="pointer-events-none absolute inset-0 animate-ping rounded-full bg-danger/35" />}
-                {dictation.listening ? <Stop size={18} weight="fill" /> : <Microphone size={21} weight="bold" />}
+                {dictation.transcribing ? (
+                  <CircleNotch size={18} weight="bold" className="animate-spin" />
+                ) : dictation.listening ? (
+                  <Stop size={18} weight="fill" />
+                ) : (
+                  <Microphone size={21} weight="bold" />
+                )}
               </button>
               <button
                 onClick={() => void submit(draft)}

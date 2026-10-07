@@ -1,14 +1,16 @@
-import { CheckCircle, PencilSimple } from '@phosphor-icons/react'
+import { CheckCircle, PencilSimple, Star } from '@phosphor-icons/react'
 import { useState } from 'react'
-import { Button, Screen, Segmented, inputClass } from '../components/ui'
+import { Button, Screen, Segmented, Toggle, inputClass } from '../components/ui'
+import { configChanges } from '../lib/tools'
+import { TOOL_ICONS } from './Tools'
 import { renderMarkdown } from '../lib/markdown'
 import { flush, useV } from '../lib/store'
 import { useNav } from '../nav'
 import { fmtUsd } from './Sessions'
 import { approve } from './sessionLogic'
-import { t } from '../lib/i18n'
+import { t, useLang } from '../lib/i18n'
 
-type Tab = 'report' | 'file' | 'cycle'
+type Tab = 'report' | 'file' | 'cycle' | 'tools'
 
 export function Review({ id }: { id: string }) {
   const v = useV()
@@ -18,6 +20,8 @@ export function Review({ id }: { id: string }) {
   const [editing, setEditing] = useState(false)
   const [report, setReport] = useState(s?.draft?.report ?? '')
   const [clientFile, setClientFile] = useState(s?.draft?.clientFile ?? '')
+  const [applyTools, setApplyTools] = useState(true)
+  const lang = useLang()
 
   if (!s?.draft) {
     return (
@@ -28,11 +32,12 @@ export function Review({ id }: { id: string }) {
   }
 
   const save = async () => {
-    approve(id, { report, clientFile })
+    approve(id, { report, clientFile, applyTools })
     await flush()
     nav.tab('files')
   }
 
+  const changes = s.draft.tools ? configChanges(v.tools, s.draft.tools, lang) : []
   const text = tab === 'report' ? report : clientFile
   const setText = tab === 'report' ? setReport : setClientFile
 
@@ -41,7 +46,7 @@ export function Review({ id }: { id: string }) {
       title={t('reportOf', { n: s.no })}
       onBack={nav.back}
       action={
-        tab !== 'cycle' && (
+        (tab === 'report' || tab === 'file') && (
           <button onClick={() => setEditing((e) => !e)} className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[15px] text-accent">
             {editing ? <CheckCircle size={18} weight="bold" /> : <PencilSimple size={18} weight="bold" />}
             {editing ? t('done') : t('edit')}
@@ -63,11 +68,44 @@ export function Review({ id }: { id: string }) {
             { value: 'report', label: t('tabReport') },
             { value: 'file', label: t('tabFile') },
             { value: 'cycle', label: t('tabCycle') },
+            ...(changes.length ? [{ value: 'tools' as const, label: t('tabTools') }] : []),
           ]}
         />
       </div>
 
-      {tab === 'cycle' ? (
+      {tab === 'tools' ? (
+        <div>
+          <p className="mb-3 text-[15px] text-muted">{t('toolsChanges')}</p>
+          <ul className="space-y-3">
+            {changes.map((c) => {
+              const I = TOOL_ICONS[c.kind]
+              return (
+                <li key={c.kind} className="flex gap-3 rounded-card bg-surface p-4 shadow-card">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent-soft text-accent">
+                    <I size={18} weight="bold" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[16px] font-[620]">{c.title}</span>
+                    <span className="mt-0.5 flex flex-wrap gap-x-3 text-[12.5px] font-medium text-accent">
+                      {c.featured && (
+                        <span className="flex items-center gap-1">
+                          <Star size={12} weight="fill" /> {t('toolFeatured')}
+                        </span>
+                      )}
+                      {c.unfeatured && <span className="text-muted">{t('toolUnfeatured')}</span>}
+                      {c.changed && <span>{t('toolUpdated')}</span>}
+                    </span>
+                    {c.why && <span className="mt-1.5 block text-[14.5px] leading-snug text-muted">{c.why}</span>}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+          <div className="mt-4 rounded-card bg-surface px-4 shadow-card">
+            <Toggle checked={applyTools} onChange={setApplyTools} label={t('applyTools')} />
+          </div>
+        </div>
+      ) : tab === 'cycle' ? (
         s.draft.cycle.length ? (
           <ol className="space-y-3">
             {s.draft.cycle.map((c, i) => (

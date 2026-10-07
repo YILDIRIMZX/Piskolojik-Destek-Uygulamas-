@@ -1,13 +1,16 @@
-import { ArrowRight, Flower, GearSix, Heart, NotePencil, Wind, ArrowsClockwise } from '@phosphor-icons/react'
+import { ArrowRight, ArrowsClockwise, CaretRight, GearSix, Sparkle, SquaresFour } from '@phosphor-icons/react'
 import { motion, useReducedMotion } from 'motion/react'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { EmergencyButton } from '../components/Emergency'
-import { cx, IconButton } from '../components/ui'
+import { Button, Group, IconButton, Row, cx } from '../components/ui'
+import { describeError } from '../lib/claude'
+import { featuredTools, toolSettings } from '../lib/tools'
 import { useNav } from '../nav'
 import { useV } from '../lib/store'
 import type { Vault } from '../lib/types'
-import { SESSION_MINUTES, nextSessionNo, remainingMinutes } from './sessionLogic'
-import { locale, t } from '../lib/i18n'
+import { SESSION_MINUTES, nextSessionNo, personalize, remainingMinutes } from './sessionLogic'
+import { TOOL_ICONS, useOpenTool } from './Tools'
+import { locale, t, useLang } from '../lib/i18n'
 
 const greeting = () => {
   const h = new Date().getHours()
@@ -37,8 +40,26 @@ export function Home() {
   const active = v.sessions.find((s) => s.status === 'active' || s.status === 'closing')
   const review = v.sessions.find((s) => s.status === 'review')
   const plan = nextPlan(v)
+  const lang = useLang()
+  const openTool = useOpenTool()
   const weekAgo = Date.now() - 7 * 864e5
   const weekEntries = v.journal.filter((e) => e.ts > weekAgo).length
+  const featured = featuredTools(v.tools)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const canPersonalize = !!v.apiKey && !v.tools && (!!v.clientFile.trim() || !!v.profile)
+
+  const runPersonalize = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      await personalize()
+    } catch (e) {
+      setError(e instanceof Error && e.message === t('personalizeFailed') ? e.message : describeError(e))
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const hero = review
     ? { label: t('reportReady', { n: review.no }), sub: t('reportReadySub'), cta: t('openReport'), go: () => nav.go({ name: 'review', id: review.id }) }
@@ -97,45 +118,59 @@ export function Home() {
           </span>
         </motion.button>
 
-        <Tile
-          motionProps={item(1)}
-          className="row-span-2 bg-accent-soft"
-          onClick={nav.newEntry}
-          icon={<NotePencil size={22} weight="bold" />}
-          title={t('tileEntryTitle')}
-          text={t('tileEntryText')}
-          foot={weekEntries ? t('weekEntries', { n: weekEntries }) : t('weekNoEntries')}
-          tone="accent"
-        />
-        <Tile
-          motionProps={item(2)}
-          onClick={() => nav.go({ name: 'cycle' })}
-          icon={<ArrowsClockwise size={22} weight="bold" />}
-          title={t('tileCycle')}
-          text={v.cycle.length ? t('cycleSteps', { n: v.cycle.length }) : t('cycleNone')}
-        />
-        <Tile
-          motionProps={item(3)}
-          onClick={() => nav.go({ name: 'breathe' })}
-          icon={<Wind size={22} weight="bold" />}
-          title={t('tileBreathe')}
-          text={t('tileBreatheText')}
-          decor={<BreathDecor />}
-        />
-        <Tile
-          motionProps={item(4)}
-          onClick={() => nav.go({ name: 'compassion' })}
-          icon={<Heart size={22} weight="bold" />}
-          title={t('tileCompassion')}
-          text={t('tileCompassionText')}
-        />
-        <Tile
-          motionProps={item(5)}
-          onClick={() => nav.go({ name: 'underneath' })}
-          icon={<Flower size={22} weight="bold" />}
-          title={t('tileUnder')}
-          text={t('tileUnderText')}
-        />
+        {featured.map((kind, i) => {
+          const ts = toolSettings(v.tools, kind, lang)
+          const I = TOOL_ICONS[kind]
+          // Bento: with an odd count the first tile spans two rows so the grid has no gaps.
+          const tall = featured.length % 2 === 1 && featured.length > 1 && i === 0
+          const wide = featured.length === 1
+          return (
+            <Tile
+              key={kind}
+              motionProps={item(i + 1)}
+              className={cx(tall && 'row-span-2', wide && 'col-span-2', i === 0 && 'bg-accent-soft')}
+              tone={i === 0 ? 'accent' : undefined}
+              onClick={() => openTool(kind)}
+              icon={<I size={22} weight="bold" />}
+              title={ts.title}
+              text={ts.subtitle}
+              foot={kind === 'moment' ? (weekEntries ? t('weekEntries', { n: weekEntries }) : t('weekNoEntries')) : undefined}
+              decor={kind === 'breathe' && i !== 0 ? <BreathDecor /> : undefined}
+            />
+          )
+        })}
+      </div>
+
+      {canPersonalize && (
+        <div className="mt-5 rounded-card bg-surface p-5 shadow-card">
+          <p className="flex items-center gap-2 text-[17px] font-[650]">
+            <Sparkle size={20} weight="fill" className="text-accent" />
+            {t('personalizeTitle')}
+          </p>
+          <p className="mt-1 text-[14.5px] leading-snug text-muted">{t('personalizeText')}</p>
+          {error && <p className="mt-2 text-[14px] text-danger">{error}</p>}
+          <Button className="mt-4" disabled={busy} onClick={runPersonalize}>
+            {busy ? t('personalizing') : t('personalizeBtn')}
+          </Button>
+        </div>
+      )}
+
+      <div className="mt-5">
+        <Group>
+          <Row
+            icon={<SquaresFour size={18} weight="bold" />}
+            title={t('toolsAll')}
+            onClick={() => nav.go({ name: 'toolsLibrary' })}
+            trailing={<CaretRight size={16} className="text-muted" />}
+          />
+          <Row
+            icon={<ArrowsClockwise size={18} weight="bold" />}
+            title={t('tileCycle')}
+            sub={v.cycle.length ? t('cycleSteps', { n: v.cycle.length }) : t('cycleNone')}
+            onClick={() => nav.go({ name: 'cycle' })}
+            trailing={<CaretRight size={16} className="text-muted" />}
+          />
+        </Group>
       </div>
     </div>
   )
@@ -168,7 +203,7 @@ function Tile({
       onClick={onClick}
       className={cx(
         'relative flex min-h-[132px] flex-col overflow-hidden rounded-card p-4 text-left shadow-card active:scale-[0.97]',
-        tone ? '' : 'bg-surface',
+        tone ? 'bg-accent-soft' : 'bg-surface',
         className,
       )}
     >
@@ -183,7 +218,7 @@ function Tile({
       </span>
       <span className="relative mt-auto pt-4">
         <span className="block text-[16.5px] leading-tight font-[620] tracking-[-0.01em]">{title}</span>
-        <span className={cx('mt-1 block text-[13.5px] leading-snug', tone ? 'text-accent-deep/80' : 'text-muted')}>{text}</span>
+        <span className={cx('mt-1 line-clamp-3 block text-[13.5px] leading-snug', tone ? 'text-accent-deep/80' : 'text-muted')}>{text}</span>
         {foot && <span className="mt-3 block text-[13px] font-medium text-accent-deep">{foot}</span>}
       </span>
     </motion.button>
