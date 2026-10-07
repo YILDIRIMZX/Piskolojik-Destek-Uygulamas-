@@ -121,14 +121,14 @@ export function Home() {
         {featured.map((kind, i) => {
           const ts = toolSettings(v.tools, kind, lang)
           const I = TOOL_ICONS[kind]
-          // Bento: with an odd count the first tile spans two rows so the grid has no gaps.
-          const tall = featured.length % 2 === 1 && featured.length > 1 && i === 0
-          const wide = featured.length === 1
+          // Bento: with an odd count the first tile spans the full width so the rest pair up without gaps.
+          const wide = featured.length % 2 === 1 && i === 0
           return (
             <Tile
               key={kind}
               motionProps={item(i + 1)}
-              className={cx(tall && 'row-span-2', wide && 'col-span-2', i === 0 && 'bg-accent-soft')}
+              className={cx(wide && 'col-span-2', i === 0 && 'bg-accent-soft')}
+              wide={wide}
               tone={i === 0 ? 'accent' : undefined}
               onClick={() => openTool(kind)}
               icon={<I size={22} weight="bold" />}
@@ -186,6 +186,7 @@ function Tile({
   tone,
   decor,
   motionProps,
+  wide,
 }: {
   icon: ReactNode
   title: string
@@ -196,13 +197,15 @@ function Tile({
   tone?: 'accent'
   decor?: ReactNode
   motionProps: object
+  wide?: boolean
 }) {
   return (
     <motion.button
       {...motionProps}
       onClick={onClick}
       className={cx(
-        'relative flex min-h-[132px] flex-col overflow-hidden rounded-card p-4 text-left shadow-card active:scale-[0.97]',
+        'relative flex overflow-hidden rounded-card p-4 text-left shadow-card active:scale-[0.97]',
+        wide ? 'flex-row items-start gap-4' : 'min-h-[132px] flex-col',
         tone ? 'bg-accent-soft' : 'bg-surface',
         className,
       )}
@@ -210,13 +213,13 @@ function Tile({
       {decor}
       <span
         className={cx(
-          'relative grid size-10 place-items-center rounded-full',
+          'relative grid size-10 shrink-0 place-items-center rounded-full',
           tone ? 'bg-accent text-accent-ink' : 'bg-accent-soft text-accent',
         )}
       >
         {icon}
       </span>
-      <span className="relative mt-auto pt-4">
+      <span className={cx('relative', wide ? 'min-w-0 flex-1' : 'mt-auto pt-4')}>
         <span className="block text-[16.5px] leading-tight font-[620] tracking-[-0.01em]">{title}</span>
         <span className={cx('mt-1 line-clamp-3 block text-[13.5px] leading-snug', tone ? 'text-accent-deep/80' : 'text-muted')}>{text}</span>
         {foot && <span className="mt-3 block text-[13px] font-medium text-accent-deep">{foot}</span>}
