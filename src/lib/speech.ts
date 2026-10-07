@@ -43,7 +43,8 @@ const START_TIMEOUT_MS = 4000
 
 export function useDictation(opts: {
   onText: (text: string) => void
-  onPause?: () => void
+  /** Called with the full text when the speaker pauses (hands-free mode). */
+  onPause?: (text: string) => void
   autoSendAfterMs?: number
   /** In-app recognition switched on in settings. When off, callers fall back to keyboard dictation. */
   enabled: boolean
@@ -53,6 +54,7 @@ export function useDictation(opts: {
   const rec = useRef<Recognition | null>(null)
   const base = useRef('')
   const finals = useRef('')
+  const last = useRef('')
   const pauseTimer = useRef<number | undefined>(undefined)
   const startTimer = useRef<number | undefined>(undefined)
   const optsRef = useRef(opts)
@@ -114,13 +116,14 @@ export function useDictation(opts: {
         if (res.isFinal) finals.current += res[0].transcript
         else interim += res[0].transcript
       }
-      optsRef.current.onText((base.current + finals.current + interim).replace(/\s+/g, ' ').trimStart())
+      last.current = (base.current + finals.current + interim).replace(/\s+/g, ' ').trimStart()
+      optsRef.current.onText(last.current)
       const ms = optsRef.current.autoSendAfterMs
       if (ms) {
         clearTimeout(pauseTimer.current)
         pauseTimer.current = window.setTimeout(() => {
           r.stop()
-          optsRef.current.onPause?.()
+          optsRef.current.onPause?.(last.current)
         }, ms)
       }
     }
@@ -155,7 +158,7 @@ export function useDictation(opts: {
 
   useEffect(() => reset, [reset])
 
-  return { listening, start, stop, error, supported: opts.enabled && canRecognize() }
+  return { listening, transcribing: false, start, stop, error, supported: opts.enabled && canRecognize() }
 }
 
 const matchesLang = (v: SpeechSynthesisVoice) => v.lang.toLowerCase().replace('_', '-').startsWith(getLang())

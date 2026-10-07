@@ -35,7 +35,54 @@ export interface Session {
   /** Language the session was held in. Older sessions have none and are Turkish. */
   lang?: 'tr' | 'en'
   usage: Usage
-  draft?: { report: string; clientFile: string; cycle: CycleStep[] }
+  draft?: { report: string; clientFile: string; cycle: CycleStep[]; tools?: ToolConfig }
+}
+
+/** Evidence-based tool templates. The counselor chooses which to feature and how to name them. */
+export type ToolKind = 'moment' | 'beneath' | 'compassion' | 'breathe' | 'grounding' | 'reframe' | 'values' | 'express' | 'urge'
+
+export type BreathVariant = '478' | 'box' | 'sigh' | 'coherent'
+
+export interface ToolSettings {
+  title: string
+  subtitle: string
+  /** One line from the counselor on why this tool fits the client. */
+  why?: string
+  // Kind-specific parameters (unused ones are ignored).
+  emotions?: string[]
+  underneathLabel?: string
+  surface?: string
+  options?: { name: string; q: string }[]
+  kindPhrase?: string
+  variant?: BreathVariant
+  values?: string[]
+  urgeName?: string
+  minutes?: number
+}
+
+export interface ToolConfig {
+  featured: ToolKind[]
+  tools: Partial<Record<ToolKind, Partial<ToolSettings>>>
+  updatedAt: number
+}
+
+/** Entries saved by tools other than the moment log (thought checks, scripts, values, urges). */
+export interface ToolEntry {
+  id: string
+  ts: number
+  kind: ToolKind
+  title: string
+  fields: { label: string; value: string }[]
+}
+
+export type TraitKey = 'O' | 'C' | 'E' | 'A' | 'N'
+
+export interface Profile {
+  /** Big Five scores, 0-100. */
+  scores: Record<TraitKey, number>
+  takenAt: number
+  concerns: string[]
+  note: string
 }
 
 export interface Report {
@@ -68,8 +115,10 @@ export interface Settings {
   readAloud: boolean
   handsFree: boolean
   speechRate: number
-  /** Safari's own speech recognition. Off by default in iPhone home-screen mode, where keyboard dictation is used. */
+  /** Legacy switch for Safari's speech recognition; superseded by `stt`. */
   inAppSpeech: boolean
+  /** Speech-to-text engine: system keyboard dictation, Safari's recognizer or Azure. */
+  stt?: 'keyboard' | 'browser' | 'azure'
   /** Chosen speech synthesis voice; empty means the best Turkish voice available. */
   voiceURI?: string
   /** Which engine reads replies aloud. */
@@ -92,7 +141,14 @@ export interface Vault {
   journal: JournalEntry[]
   cycle: CycleStep[]
   settings: Settings
+  toolEntries?: ToolEntry[]
+  tools?: ToolConfig
+  profile?: Profile
+  /** The user chose to skip the personality test on first launch. */
+  profileSkipped?: boolean
 }
+
+export const sttEngine = (s: Settings): NonNullable<Settings['stt']> => s.stt ?? (s.inAppSpeech ? 'browser' : 'keyboard')
 
 export const emptyUsage = (): Usage => ({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0, usd: 0 })
 

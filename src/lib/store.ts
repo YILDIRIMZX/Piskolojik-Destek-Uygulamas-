@@ -3,6 +3,7 @@ import { useSyncExternalStore } from 'react'
 import { deriveKey, newSalt, open, seal, type Sealed } from './crypto'
 import { newVault, type Vault } from './types'
 
+// Storage keys keep the app's original name so existing data stays readable after the rename.
 const VAULT_KEY = 'seans-vault'
 const ATTEMPTS_KEY = 'seans-attempts'
 

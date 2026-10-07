@@ -1,4 +1,4 @@
-import { Check, DownloadSimple, Export, FileArrowUp, Key, LockKey, Password, Trash, UploadSimple } from '@phosphor-icons/react'
+import { Check, DownloadSimple, Export, FileArrowUp, Key, LockKey, Password, Sparkle, SquaresFour, Trash, UploadSimple, UserCircle } from '@phosphor-icons/react'
 import { useEffect, useState } from 'react'
 import { PIN_LENGTH, PinPad } from '../components/PinPad'
 import { Button, Field, Group, Row, Screen, Segmented, Sheet, Toggle, inputClass } from '../components/ui'
@@ -7,7 +7,9 @@ import { exportBackup, exportMarkdown, importMarkdownFiles, mergeReports, readBa
 import { AZURE_VOICES, setLang, t, useLang, type Lang } from '../lib/i18n'
 import { canRecognize, canSpeak, isEnhancedVoice, isIOSStandalone, langVoices, speak } from '../lib/speech'
 import { changePin, lock, update, useV, wipe } from '../lib/store'
-import type { AzureVoice, ModelId } from '../lib/types'
+import { archetype } from '../lib/personality'
+import { sttEngine, type AzureVoice, type ModelId, type Settings as SettingsT } from '../lib/types'
+import { personalize } from './sessionLogic'
 import { AzureError, azureAudio, azureVoiceFor, primeAudio, say } from '../lib/voice'
 import { useNav } from '../nav'
 
@@ -19,6 +21,19 @@ export function Settings() {
   const [pinSheet, setPinSheet] = useState(false)
   const [wipeSheet, setWipeSheet] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  const [personalizing, setPersonalizing] = useState(false)
+  const engine = sttEngine(v.settings)
+  const runPersonalize = async () => {
+    setPersonalizing(true)
+    try {
+      await personalize()
+      setNotice(t('ptPrepared'))
+    } catch (e) {
+      setNotice(e instanceof Error && e.message === t('personalizeFailed') ? e.message : describeError(e))
+    } finally {
+      setPersonalizing(false)
+    }
+  }
   const setSettings = (patch: Partial<typeof v.settings>) => update((x) => ({ ...x, settings: { ...x.settings, ...patch } }))
 
   const onImport = async (files: FileList | null) => {
@@ -84,6 +99,24 @@ export function Settings() {
         </div>
       </Group>
 
+      <Group title={t('toolsTitle')}>
+        <Row
+          icon={<UserCircle size={18} weight="bold" />}
+          title={t('ptRow')}
+          sub={v.profile ? archetype(v.profile.scores, lang) : t('ptRowNone')}
+          onClick={() => nav.go({ name: 'personality' })}
+        />
+        <Row icon={<SquaresFour size={18} weight="bold" />} title={t('toolsAll')} onClick={() => nav.go({ name: 'toolsLibrary' })} />
+        {v.apiKey && (v.clientFile.trim() || v.profile) && (
+          <Row
+            icon={<Sparkle size={18} weight="bold" />}
+            title={personalizing ? t('personalizing') : t('personalizeTitle')}
+            sub={t('personalizeText')}
+            onClick={personalizing ? undefined : () => void runPersonalize()}
+          />
+        )}
+      </Group>
+
       <Group title={t('voice')}>
         <Toggle
           checked={v.settings.readAloud}
@@ -91,18 +124,15 @@ export function Settings() {
           label={t('readAloudToggle')}
           hint={canSpeak() ? undefined : t('noTtsDevice')}
         />
-        <Toggle
-          checked={v.settings.inAppSpeech}
-          onChange={(inAppSpeech) => setSettings({ inAppSpeech, handsFree: inAppSpeech && v.settings.handsFree })}
-          label={t('inAppSpeech')}
-          hint={!canRecognize() ? t('inAppNone') : isIOSStandalone() ? t('inAppIos') : t('inAppOther')}
-        />
-        <Toggle
-          checked={v.settings.handsFree && v.settings.inAppSpeech}
-          onChange={(handsFree) => setSettings({ handsFree, inAppSpeech: handsFree || v.settings.inAppSpeech })}
-          label={t('handsFree')}
-          hint={canRecognize() ? t('handsFreeHintSettings') : t('noRecognition')}
-        />
+        <SttPicker />
+        {engine !== 'keyboard' && (
+          <Toggle
+            checked={v.settings.handsFree}
+            onChange={(handsFree) => setSettings({ handsFree })}
+            label={t('handsFree')}
+            hint={t('handsFreeHintSettings')}
+          />
+        )}
         <div className="py-3.5">
           <p className="mb-2 text-[15px]">{t('speechRate')}</p>
           <Segmented<string>
@@ -116,6 +146,10 @@ export function Settings() {
           />
         </div>
         <VoiceEngine />
+      </Group>
+
+      <Group title={t('azureGroup')}>
+        <AzureKeySettings />
       </Group>
 
       <Group title={t('data')}>
@@ -301,9 +335,49 @@ function VoicePicker() {
   )
 }
 
+function SttPicker() {
+  const v = useV()
+  const engine = sttEngine(v.settings)
+  const set = (patch: Partial<SettingsT>) => update((x) => ({ ...x, settings: { ...x.settings, ...patch } }))
+  const hasAzure = !!v.settings.azureKey && !!v.settings.azureRegion
+  const options: { value: NonNullable<SettingsT['stt']>; label: string }[] = [
+    { value: 'keyboard', label: t('sttKeyboard') },
+    ...(canRecognize() ? [{ value: 'browser' as const, label: t('sttBrowser') }] : []),
+    { value: 'azure', label: t('sttAzure') },
+  ]
+  const hint =
+    engine === 'keyboard'
+      ? t('sttKeyboardHint')
+      : engine === 'browser'
+        ? isIOSStandalone()
+          ? t('inAppIos')
+          : t('inAppOther')
+        : `${t('sttAzureHint')}${hasAzure ? '' : ` ${t('sttAzureNeedsKey')}`}`
+  return (
+    <div className="py-3.5">
+      <p className="mb-2 text-[15px]">{t('sttEngine')}</p>
+      <Segmented<NonNullable<SettingsT['stt']>>
+        value={engine}
+        onChange={(stt) => set({ stt, inAppSpeech: stt === 'browser', handsFree: stt === 'keyboard' ? false : v.settings.handsFree })}
+        options={options}
+      />
+      <p className="mt-2 text-[13px] leading-snug text-muted">{hint}</p>
+    </div>
+  )
+}
+
 function VoiceEngine() {
   const v = useV()
+  const lang = useLang()
   const engine = v.settings.tts ?? 'device'
+  const saved = !!v.settings.azureKey && !!v.settings.azureRegion
+  const setVoice = (azureVoice: AzureVoice) => {
+    update((x) => ({ ...x, settings: { ...x.settings, azureVoice } }))
+    if (saved) {
+      primeAudio()
+      void say(t('sample'), { ...v.settings, azureVoice })
+    }
+  }
   return (
     <div className="py-3.5">
       <p className="mb-2 text-[15px]">{t('voiceEngine')}</p>
@@ -315,19 +389,30 @@ function VoiceEngine() {
           { value: 'azure', label: t('azureVoice') },
         ]}
       />
-      <div className="mt-3">{engine === 'azure' ? <AzureSettings /> : <VoicePicker />}</div>
+      <div className="mt-3">
+        {engine === 'azure' ? (
+          <>
+            <Segmented<AzureVoice>
+              value={azureVoiceFor(v.settings)}
+              onChange={setVoice}
+              options={AZURE_VOICES[lang].map((x) => ({ value: x.value, label: `${x.name} (${t(x.gender)})` }))}
+            />
+            {!saved && <p className="mt-2 text-[13px] text-muted">{t('sttAzureNeedsKey')}</p>}
+          </>
+        ) : (
+          <VoicePicker />
+        )}
+      </div>
     </div>
   )
 }
 
-function AzureSettings() {
+function AzureKeySettings() {
   const v = useV()
-  const lang = useLang()
   const [key, setKey] = useState('')
   const [region, setRegion] = useState(v.settings.azureRegion ?? '')
   const [state, setState] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle')
   const [error, setError] = useState('')
-  const voice = azureVoiceFor(v.settings)
   const saved = !!v.settings.azureKey
 
   const test = async () => {
@@ -336,7 +421,7 @@ function AzureSettings() {
     const k = key.trim() || v.settings.azureKey || ''
     const r = region.trim().toLowerCase().replace(/\s+/g, '')
     try {
-      await azureAudio('OK.', { key: k, region: r, voice, rate: 1 })
+      await azureAudio('OK.', { key: k, region: r, voice: azureVoiceFor(v.settings), rate: 1 })
       update((x) => ({ ...x, settings: { ...x.settings, azureKey: k, azureRegion: r } }))
       setKey('')
       setState('ok')
@@ -347,46 +432,32 @@ function AzureSettings() {
     }
   }
 
-  const setVoice = (azureVoice: AzureVoice) => {
-    update((x) => ({ ...x, settings: { ...x.settings, azureVoice } }))
-    if (saved) {
-      primeAudio()
-      void say(t('sample'), { ...v.settings, azureVoice })
-    }
-  }
-
   return (
-    <div>
-      <Segmented<AzureVoice>
-        value={voice}
-        onChange={setVoice}
-        options={AZURE_VOICES[lang].map((x) => ({ value: x.value, label: `${x.name} (${t(x.gender)})` }))}
-      />
-      <div className="mt-4">
-        <Field label={t('azureKey')} hint={saved ? t('azureKeySaved') : t('azureKeyHint')}>
-          <input
-            className={inputClass}
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
-            placeholder={saved ? '••••••••' : t('pasteKey')}
-            type="password"
-            autoComplete="off"
-            autoCapitalize="off"
-            spellCheck={false}
-          />
-        </Field>
-        <Field label={t('region')} hint={t('regionHint')}>
-          <input
-            className={inputClass}
-            value={region}
-            onChange={(e) => setRegion(e.target.value)}
-            placeholder="northeurope"
-            autoComplete="off"
-            autoCapitalize="off"
-            spellCheck={false}
-          />
-        </Field>
-      </div>
+    <div className="py-3.5">
+      <p className="mb-3 text-[13px] leading-snug text-muted">{t('azureShared')}</p>
+      <Field label={t('azureKey')} hint={saved ? t('azureKeySaved') : t('azureKeyHint')}>
+        <input
+          className={inputClass}
+          value={key}
+          onChange={(e) => setKey(e.target.value)}
+          placeholder={saved ? '••••••••' : t('pasteKey')}
+          type="password"
+          autoComplete="off"
+          autoCapitalize="off"
+          spellCheck={false}
+        />
+      </Field>
+      <Field label={t('region')} hint={t('regionHint')}>
+        <input
+          className={inputClass}
+          value={region}
+          onChange={(e) => setRegion(e.target.value)}
+          placeholder="northeurope"
+          autoComplete="off"
+          autoCapitalize="off"
+          spellCheck={false}
+        />
+      </Field>
       {state === 'error' && <p className="-mt-2 mb-3 text-[14px] text-danger">{error}</p>}
       {state === 'ok' && <p className="-mt-2 mb-3 text-[14px] text-accent">{t('azureOk')}</p>}
       <Button variant="secondary" className="w-full" disabled={state === 'testing' || !region.trim() || (!key.trim() && !saved)} onClick={test}>

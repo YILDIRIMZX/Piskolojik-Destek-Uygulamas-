@@ -1,7 +1,18 @@
 import { addUsage, extractTag, streamReply, toApiMessages } from '../lib/claude'
 import { reportFromMarkdown } from '../lib/files'
 import { getLang, t, type Lang } from '../lib/i18n'
-import { CYCLE_INSTRUCTION, CYCLE_SYSTEM, OPENING, buildSystemPrompt, closingInstruction, reportInstruction, timeTag } from '../lib/prompts'
+import {
+  CYCLE_INSTRUCTION,
+  CYCLE_SYSTEM,
+  OPENING,
+  PERSONALIZE_SYSTEM,
+  buildSystemPrompt,
+  closingInstruction,
+  personalizeInstruction,
+  reportInstruction,
+  timeTag,
+} from '../lib/prompts'
+import { fullToolConfig, mergeToolConfig, sanitizeToolConfig, type ToolConfigPatch } from '../lib/tools'
 import { getVault, update } from '../lib/store'
 import { emptyUsage, uid, type ChatMessage, type CycleStep, type Session, type Vault } from '../lib/types'
 
@@ -36,6 +47,9 @@ export function createSession(): string {
       clientFile: v.clientFile,
       lastReport: [...v.reports].sort((a, b) => b.no - a.no)[0],
       journal: [...v.journal].sort((a, b) => b.ts - a.ts),
+      toolEntries: [...(v.toolEntries ?? [])].sort((a, b) => b.ts - a.ts),
+      profile: v.profile,
+      tools: v.tools,
     }),
     messages: [],
     status: 'active',
@@ -115,7 +129,7 @@ export async function generateReport(id: string) {
       ...toApiMessages(s.messages),
       {
         role: 'user',
-        content: reportInstruction(langOf(s), s.no, new Date(s.startedAt).toISOString().slice(0, 10), Math.round(s.activeMs / 60000)),
+        content: reportInstruction(langOf(s), s.no, new Date(s.startedAt).toISOString().slice(0, 10), Math.round(s.activeMs / 60000), v.tools),
       },
     ],
     maxTokens: 24000,
@@ -128,9 +142,22 @@ export async function generateReport(id: string) {
     status: 'review',
     endedAt: x.endedAt ?? Date.now(),
     usage: addUsage(x.usage, x.model, res.usage),
-    draft: { report, clientFile, cycle: parseCycle(extractTag(res.text, 'dongu')) },
+    draft: { report, clientFile, cycle: parseCycle(extractTag(res.text, 'dongu')), tools: patchOrUndefined(parseTools(extractTag(res.text, 'araclar')), v) },
   }))
 }
+
+/** Tool settings from a tagged JSON block. "AYNI"/"SAME" or invalid JSON means no change. */
+export function parseTools(raw: string | null): ToolConfigPatch | null {
+  if (!raw || /^(AYNI|SAME)$/i.test(raw.trim())) return null
+  try {
+    return sanitizeToolConfig(JSON.parse(raw.replace(/^```(?:json)?|```$/g, '').trim()))
+  } catch {
+    return null
+  }
+}
+
+/** The counselor's changes merged into the current tools, or nothing when there are no changes. */
+const patchOrUndefined = (patch: ToolConfigPatch | null, v: Vault) => (patch && (patch.featured || Object.keys(patch.tools).length) ? mergeToolConfig(v.tools, patch) : undefined)
 
 export function parseCycle(raw: string | null): CycleStep[] {
   if (!raw) return []
@@ -145,7 +172,7 @@ export function parseCycle(raw: string | null): CycleStep[] {
   }
 }
 
-export function approve(id: string, edited?: { report: string; clientFile: string }) {
+export function approve(id: string, edited?: { report: string; clientFile: string; applyTools?: boolean }) {
   update((v) => {
     const s = v.sessions.find((x) => x.id === id)
     if (!s?.draft) return v
@@ -158,6 +185,7 @@ export function approve(id: string, edited?: { report: string; clientFile: strin
       clientFileHistory: v.clientFile ? [{ ts: Date.now(), markdown: v.clientFile }, ...v.clientFileHistory].slice(0, 20) : v.clientFileHistory,
       clientFile,
       cycle: s.draft.cycle.length ? s.draft.cycle : v.cycle,
+      tools: edited?.applyTools === false ? v.tools : (s.draft.tools ?? v.tools),
       sessions: v.sessions.map((x) => (x.id === id ? { ...x, status: 'done' as const, draft: undefined } : x)),
     }
   })
@@ -189,4 +217,27 @@ export async function extractCycle() {
   const cycle = parseCycle(extractTag(res.text, 'dongu'))
   if (!cycle.length) throw new Error(t('cycleFailed'))
   update((x) => ({ ...x, cycle }))
+}
+
+/**
+ * One call that tailors the tools to the client (and writes a first client file for new users).
+ * Uses the client file, the latest report and the personality test, so it costs a few cents at most.
+ */
+export async function personalize() {
+  const v = getVault()
+  if (!v) return
+  const lang = getLang()
+  const lastReport = [...v.reports].sort((a, b) => b.no - a.no)[0]
+  const res = await streamReply({
+    apiKey: v.apiKey,
+    model: v.settings.model,
+    system: PERSONALIZE_SYSTEM[lang],
+    messages: [{ role: 'user', content: personalizeInstruction({ lang, profile: v.profile, clientFile: v.clientFile, lastReport, tools: v.tools }) }],
+    maxTokens: 8000,
+  })
+  const patch = parseTools(extractTag(res.text, 'araclar'))
+  if (!patch) throw new Error(t('personalizeFailed'))
+  const tools = fullToolConfig(patch)
+  const file = v.clientFile.trim() ? null : extractTag(res.text, 'danisan_dosyasi')
+  update((x) => ({ ...x, tools, clientFile: file ?? x.clientFile }))
 }

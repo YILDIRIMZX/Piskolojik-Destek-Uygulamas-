@@ -16,9 +16,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Seans',
-        short_name: 'Seans',
-        description: 'Kişisel seans, günlük ve raporlar',
+        name: 'İçgörü',
+        short_name: 'İçgörü',
+        description: 'Yapay zeka destekli kişisel danışmanlık arkadaşı: seanslar, günlük ve kişiye özel araçlar',
         lang: 'tr',
         display: 'standalone',
         orientation: 'portrait',
