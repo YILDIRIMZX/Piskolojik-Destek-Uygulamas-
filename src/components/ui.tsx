@@ -289,7 +289,7 @@ export function Row({
     <button onClick={onClick} className="flex w-full items-center gap-3 py-3.5 text-left active:opacity-60">
       {icon && <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent-soft text-accent">{icon}</span>}
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[16px]">{title}</span>
+        <span className="line-clamp-2 block text-[16px] leading-snug">{title}</span>
         {sub && <span className="block truncate text-[13.5px] text-muted">{sub}</span>}
       </span>
       {trailing}

@@ -92,8 +92,10 @@ export const TOOL_CATALOG = `- moment: structured log of a hard moment (CBT thou
 
 const cap = (s: unknown, n: number) => (typeof s === 'string' ? s.trim().slice(0, n) : undefined)
 
-export const TITLE_MAX = 24
-export const TITLE_MAX_WORDS = 4
+export const TITLE_MAX = 36
+export const TITLE_MAX_WORDS = 6
+/** Version 1 cut titles at exactly this length, so such titles in old configs are treated as cut. */
+const LEGACY_CUT = 28
 
 /** Titles are never cut: a title that breaks the limits is rejected and the default name is used. */
 export const validTitle = (s: unknown): string | undefined => {
@@ -179,7 +181,7 @@ export function sanitizeToolConfig(raw: unknown): ToolConfigPatch | null {
 export function mergeToolConfig(base: ToolConfig | undefined, patch: ToolConfigPatch): ToolConfig {
   const tools: ToolConfig['tools'] = { ...(base?.tools ?? {}) }
   for (const [kind, s] of Object.entries(patch.tools) as [ToolKind, Partial<ToolSettings>][]) tools[kind] = { ...(tools[kind] ?? {}), ...s }
-  return { featured: patch.featured ?? base?.featured ?? DEFAULT_FEATURED, tools, updatedAt: Date.now() }
+  return { featured: patch.featured ?? base?.featured ?? DEFAULT_FEATURED, tools, updatedAt: Date.now(), v: 2 }
 }
 
 /** A complete configuration from a patch (used when the counselor writes a fresh setup). */
@@ -190,7 +192,7 @@ export function toolSettings(config: ToolConfig | undefined, kind: ToolKind, lan
   const custom = config?.tools[kind] ?? {}
   const s = { ...DEFAULTS[lang][kind], ...custom }
   // Titles saved by older versions could be cut mid-word; those fall back to the default name.
-  if (custom.title && !validTitle(custom.title)) s.title = DEFAULTS[lang][kind].title
+  if (custom.title && (!validTitle(custom.title) || (!config?.v && custom.title.length === LEGACY_CUT))) s.title = DEFAULTS[lang][kind].title
   return s
 }
 
