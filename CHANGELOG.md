@@ -6,6 +6,12 @@ Her güncelleme, neyin neden değiştiğiyle birlikte burada listelenir. En yeni
 
 ---
 
+## 2.1.1 (2026-10-08)
+
+**EN.** "Personalize" now starts from scratch. It used to send the current tool names to the counselor, and an old cut-off title ("…Değil, Dos") was shortened again instead of being fixed. The counselor no longer sees the old names during personalization and is told never to abbreviate or cut words, and to repair any cut-off word it finds.
+
+**TR.** "Kişiselleştir" artık sıfırdan çalışıyor. Önceden mevcut araç adlarını danışmana gönderiyordu ve eski kesik bir başlık ("…Değil, Dos") düzeltilmek yerine yeniden kısaltılmıştı. Danışman kişiselleştirmede eski adları artık görmüyor; kelimeleri asla kısaltmaması ya da kesmemesi, yarım kalmış bir kelime görürse düzeltmesi söyleniyor.
+
 ## 2.1.0 (2026-10-08)
 
 **EN.** Fixes reported from daily use on iPhone.
