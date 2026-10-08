@@ -6,11 +6,17 @@ Her güncelleme, neyin neden değiştiğiyle birlikte burada listelenir. En yeni
 
 ---
 
+## 2.1.4 (2026-10-08)
+
+**EN.** Documentation only. The description of the companion app Akşam Notu no longer mentions where the idea came from, so the public repository stays free of personal details.
+
+**TR.** Yalnızca belgeler. Yardımcı uygulama Akşam Notu'nun tanımı artık fikrin nereden çıktığından söz etmiyor; böylece herkese açık repo kişisel ayrıntı içermiyor.
+
 ## 2.1.3 (2026-10-08)
 
-**EN.** Documentation only. The READMEs now have a "Companion apps" section that links to [Akşam Notu](https://github.com/YILDIRIMZX/aksam-notu), a small evening note and reminder app built from a between-session assignment. It lives in its own repository because it has its own notification setup (GitHub Actions, Web Push and a Windows shutdown trigger), and it shares İçgörü's look.
+**EN.** Documentation only. The READMEs now have a "Companion apps" section that links to [Akşam Notu](https://github.com/YILDIRIMZX/aksam-notu), a small evening note and reminder app. It lives in its own repository because it has its own notification setup (GitHub Actions, Web Push and a Windows shutdown trigger), and it shares İçgörü's look.
 
-**TR.** Yalnızca belgeler. README'lere [Akşam Notu](https://github.com/YILDIRIMZX/aksam-notu) uygulamasına bağlantı veren bir "Yardımcı uygulamalar" bölümü eklendi. Akşam Notu, seanslar arası bir ödevden doğan küçük bir akşam notu ve hatırlatma uygulamasıdır. Kendine ait bir bildirim düzeni (GitHub Actions, Web Push ve Windows kapanış tetikleyicisi) olduğu için ayrı bir repoda duruyor ve İçgörü ile aynı görünümü paylaşıyor.
+**TR.** Yalnızca belgeler. README'lere [Akşam Notu](https://github.com/YILDIRIMZX/aksam-notu) uygulamasına bağlantı veren bir "Yardımcı uygulamalar" bölümü eklendi. Akşam Notu küçük bir akşam notu ve hatırlatma uygulamasıdır. Kendine ait bir bildirim düzeni (GitHub Actions, Web Push ve Windows kapanış tetikleyicisi) olduğu için ayrı bir repoda duruyor ve İçgörü ile aynı görünümü paylaşıyor.
 
 ## 2.1.2 (2026-10-08)
 

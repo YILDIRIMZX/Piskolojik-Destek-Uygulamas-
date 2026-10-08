@@ -10,7 +10,7 @@
 
 **English** · [Türkçe](README.tr.md) · [Русский](README.ru.md)
 
-![Version](https://img.shields.io/badge/version-2.1.3-2c6a5d)
+![Version](https://img.shields.io/badge/version-2.1.4-2c6a5d)
 ![React](https://img.shields.io/badge/React-19.3-149eca)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178c6)
 ![Vite](https://img.shields.io/badge/Vite-8.3-646cff)
@@ -190,7 +190,7 @@ Every push to `main` builds the app and publishes it to GitHub Pages through `.g
 
 | App | What it does |
 |---|---|
-| [**Akşam Notu**](https://github.com/YILDIRIMZX/aksam-notu) | A tiny evening note born from a between-session assignment: three optional lines before bed (open problem, first step tomorrow, did the alarm go off). When the computer shuts down at night, or at 22:00 at the latest, the phone gets one reminder a day. Separate repository, same look. |
+| [**Akşam Notu**](https://github.com/YILDIRIMZX/aksam-notu) | A tiny evening note: three optional lines before bed (open problem, first step tomorrow, did the alarm go off). When the computer shuts down at night, or at 22:00 at the latest, the phone gets one reminder a day. Separate repository, same look. |
 
 ## License
 
