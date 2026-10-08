@@ -8,7 +8,7 @@
 
 [English](README.md) · **Türkçe** · [Русский](README.ru.md)
 
-![Sürüm](https://img.shields.io/badge/sürüm-2.0-2c6a5d)
+![Sürüm](https://img.shields.io/badge/sürüm-2.1-2c6a5d)
 ![React](https://img.shields.io/badge/React-19.3-149eca)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178c6)
 ![Vite](https://img.shields.io/badge/Vite-8.3-646cff)
@@ -28,6 +28,8 @@
 Proje, sohbet üzerinden yürütülen bir dizi öz-değerlendirme seansını telefona uygun, sakin bir deneyime dönüştürme denemesi olarak başladı. Amaç, seanslar arasındaki sürekliliği korurken hassas verileri cihazda tutmaktır.
 
 ## 2.0 sürümündeki yenilikler
+
+> Her güncelleme, neyin neden değiştiğiyle birlikte [CHANGELOG.md](CHANGELOG.md) dosyasında listelenir.
 
 2.0 sürümü, gerçek bir kullanıcının bir seanstan sonra verdiği geri bildirimden ve uygulamayı tek bir senaryoya değil herkese hitap eder hale getirme hedefinden doğdu.
 

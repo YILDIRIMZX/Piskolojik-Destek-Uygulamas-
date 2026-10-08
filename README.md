@@ -10,7 +10,7 @@
 
 **English** · [Türkçe](README.tr.md) · [Русский](README.ru.md)
 
-![Version](https://img.shields.io/badge/version-2.0-2c6a5d)
+![Version](https://img.shields.io/badge/version-2.1-2c6a5d)
 ![React](https://img.shields.io/badge/React-19.3-149eca)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178c6)
 ![Vite](https://img.shields.io/badge/Vite-8.3-646cff)
@@ -30,6 +30,8 @@
 The project started as an experiment in turning a series of chat-based reflection sessions into a calm, phone-first experience that keeps continuity from one session to the next while keeping sensitive data on the device.
 
 ## What's new in 2.0
+
+> Every update, with what changed and why, is listed in [CHANGELOG.md](CHANGELOG.md).
 
 Version 2.0 grew out of a real user's feedback after a session, and out of the goal of making the app useful to anyone rather than to a single scenario.
 
