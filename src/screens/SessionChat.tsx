@@ -6,6 +6,7 @@ import { Button, Sheet, cx } from '../components/ui'
 import { describeError } from '../lib/claude'
 import { renderMarkdown } from '../lib/markdown'
 import { useSpeechInput } from '../lib/dictation'
+import { useWakeLock } from '../lib/wakeLock'
 import { canSpeak } from '../lib/speech'
 import { azureReady, primeAudio, say, stopAll } from '../lib/voice'
 import { flush, update, useV } from '../lib/store'
@@ -64,6 +65,8 @@ export function SessionChat({ id }: { id: string }) {
     },
   })
   const [kbHint, setKbHint] = useState(false)
+  // The screen stays on for the whole session, so long answers and listening aren't cut off.
+  useWakeLock(s?.status === 'active' || s?.status === 'closing')
 
   const afterReply = useCallback(
     async (text: string | undefined) => {

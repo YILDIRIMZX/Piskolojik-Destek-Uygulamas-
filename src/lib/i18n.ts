@@ -377,6 +377,7 @@ const tr = {
   errAzureKey: 'Azure anahtarı geçersiz ya da bölge yanlış.',
   errAzureQuota: 'Azure kotası doldu ya da çok sık istek gönderildi.',
   errAzure: 'Azure hatası ({n}).',
+  errNoAudio: 'Ses alınamadı. Mikrofona tekrar dokunup konuş.',
 
   // Tools library
   toolsAll: 'Tüm araçlar',
@@ -836,6 +837,7 @@ const en: Record<Key, string> = {
   errAzureKey: 'Invalid Azure key or wrong region.',
   errAzureQuota: 'Azure quota reached or too many requests.',
   errAzure: 'Azure error ({n}).',
+  errNoAudio: 'No audio came through. Tap the mic again and speak.',
 
   toolsAll: 'All tools',
   toolsTitle: 'Tools',

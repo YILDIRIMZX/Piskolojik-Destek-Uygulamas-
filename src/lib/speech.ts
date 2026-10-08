@@ -103,6 +103,7 @@ export function useDictation(opts: {
       setError(null)
       base.current = current ? current.replace(/\s*$/, ' ') : ''
       finals.current = ''
+      last.current = base.current
       const r = new C()
       r.lang = speechLang()
       r.continuous = true
@@ -134,7 +135,10 @@ export function useDictation(opts: {
         reset()
       }
       r.onend = () => {
-        if (rec.current === r) reset()
+        if (rec.current === r) {
+          if (last.current.trim() === base.current.trim()) setError(t('errNoAudio'))
+          reset()
+        }
       }
       rec.current = r
       try {

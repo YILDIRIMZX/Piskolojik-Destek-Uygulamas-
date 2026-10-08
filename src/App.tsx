@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { EmergencySheet } from './components/Emergency'
 import { TabBar } from './components/TabBar'
 import { Button, Sheet } from './components/ui'
@@ -35,6 +35,13 @@ export default function App() {
   useEffect(() => {
     document.documentElement.lang = lang
   }, [lang])
+
+  // iOS may leave the page shifted after the keyboard closes; the page never scrolls, so snap it back.
+  useEffect(() => {
+    const reset = () => setTimeout(() => window.scrollTo(0, 0), 60)
+    document.addEventListener('focusout', reset)
+    return () => document.removeEventListener('focusout', reset)
+  }, [])
 
   // Save on background, lock after two minutes away.
   useEffect(() => {
@@ -82,20 +89,22 @@ function Shell() {
   })
   const [emergency, setEmergency] = useState(false)
   const [entry, setEntry] = useState(false)
+  const scroller = useRef<HTMLDivElement>(null)
+  const toTop = () => scroller.current?.scrollTo(0, 0)
   const route = stack[stack.length - 1]
   const rootTab = (stack[0].name as Tab) ?? 'home'
 
   const go = useCallback((r: Route) => {
     setStack((s) => [...s, r])
-    window.scrollTo(0, 0)
+    toTop()
   }, [])
   const back = useCallback(() => {
     setStack((s) => (s.length > 1 ? s.slice(0, -1) : s))
-    window.scrollTo(0, 0)
+    toTop()
   }, [])
   const tab = useCallback((t: Tab) => {
     setStack([{ name: t }])
-    window.scrollTo(0, 0)
+    toTop()
   }, [])
 
   const nav: Nav = useMemo(
@@ -108,6 +117,8 @@ function Shell() {
 
   return (
     <NavContext.Provider value={nav}>
+      <div className="relative h-full overflow-hidden">
+      <div ref={scroller} className="relative h-full overflow-y-auto overscroll-contain">
       <AnimatePresence mode="popLayout" initial={false}>
         <motion.main
           key={key}
@@ -115,12 +126,14 @@ function Shell() {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-          className="min-h-[100dvh]"
+          className="min-h-full"
         >
           <Screen route={route} />
         </motion.main>
       </AnimatePresence>
+      </div>
       {isRoot && <TabBar active={rootTab} onChange={tab} />}
+      </div>
       <EmergencySheet open={emergency} onClose={() => setEmergency(false)} />
       <NewEntrySheet open={entry} onClose={() => setEntry(false)} />
     </NavContext.Provider>

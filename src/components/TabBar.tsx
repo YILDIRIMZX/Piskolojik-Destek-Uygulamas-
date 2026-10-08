@@ -12,7 +12,7 @@ const TABS: { id: Tab; label: Key; Icon: typeof SunHorizon }[] = [
 
 export function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void }) {
   return (
-    <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-[max(env(safe-area-inset-bottom),14px)]">
+    <nav className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-[max(env(safe-area-inset-bottom),14px)]">
       <div className="glass pointer-events-auto grid w-full max-w-md grid-cols-4 rounded-full border border-line p-1.5 shadow-card">
         {TABS.map(({ id, label, Icon }) => {
           const on = id === active
