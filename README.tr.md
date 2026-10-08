@@ -8,7 +8,7 @@
 
 [English](README.md) · **Türkçe** · [Русский](README.ru.md)
 
-![Sürüm](https://img.shields.io/badge/sürüm-2.1.2-2c6a5d)
+![Sürüm](https://img.shields.io/badge/sürüm-2.1.3-2c6a5d)
 ![React](https://img.shields.io/badge/React-19.3-149eca)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178c6)
 ![Vite](https://img.shields.io/badge/Vite-8.3-646cff)
@@ -183,6 +183,12 @@ Web Crypto güvenli bir bağlam gerektirir. Bu yüzden testleri `localhost` üze
 - Kişilik testinin Türkçe ifadeleri projenin kendi çevirisidir, resmi olarak doğrulanmış bir uyarlama değildir. Test klinik bir değerlendirme değil, hafif bir ipucu verir.
 - Veriler tek bir cihazdaki tek bir tarayıcı profiline bağlıdır. Ana ekrandaki uygulamayı silmek verilerini de siler, bu yüzden düzenli yedek almak önemlidir.
 - Model çıktıları hatalı olabilir. Raporlar ve araç önerileri kullanıcının gözden geçirmesi gereken taslaklardır, klinik belge değildir.
+
+## Yardımcı uygulamalar
+
+| Uygulama | Ne yapar |
+|---|---|
+| [**Akşam Notu**](https://github.com/YILDIRIMZX/aksam-notu) | Seanslar arası bir ödevden doğan küçük bir akşam notu: yatmadan önce isteğe bağlı üç satır (açıkta kalan problem, yarın atacağım ilk adım, bugün alarm çaldı mı). Bilgisayar gece kapanınca ya da en geç 22:00'de telefona günde bir kez hatırlatma gelir. Ayrı repo, aynı görünüm. |
 
 ## Lisans
 

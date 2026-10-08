@@ -10,7 +10,7 @@
 
 **English** · [Türkçe](README.tr.md) · [Русский](README.ru.md)
 
-![Version](https://img.shields.io/badge/version-2.1.2-2c6a5d)
+![Version](https://img.shields.io/badge/version-2.1.3-2c6a5d)
 ![React](https://img.shields.io/badge/React-19.3-149eca)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178c6)
 ![Vite](https://img.shields.io/badge/Vite-8.3-646cff)
@@ -185,6 +185,12 @@ Every push to `main` builds the app and publishes it to GitHub Pages through `.g
 - The Turkish wording of the personality test is the project's own translation, not a validated adaptation. The test gives a light hint, not a clinical assessment.
 - Data is tied to one browser profile on one device. Removing the Home Screen app also removes its data, so regular backups matter.
 - Model output can be wrong. Reports and tool suggestions are drafts for the user to review, not clinical documents.
+
+## Companion apps
+
+| App | What it does |
+|---|---|
+| [**Akşam Notu**](https://github.com/YILDIRIMZX/aksam-notu) | A tiny evening note born from a between-session assignment: three optional lines before bed (open problem, first step tomorrow, did the alarm go off). When the computer shuts down at night, or at 22:00 at the latest, the phone gets one reminder a day. Separate repository, same look. |
 
 ## License
 
