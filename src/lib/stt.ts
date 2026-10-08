@@ -8,13 +8,14 @@ const TARGET_RATE = 16000
 const CHUNK_SECONDS = 45
 const SPEECH_RMS = 0.015
 
-let sharedCtx: AudioContext | null = null
-const audioContext = () => {
-  if (!sharedCtx || sharedCtx.state === 'closed') {
-    const C = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-    sharedCtx = new C()
-  }
-  return sharedCtx
+/** RMS below this for a whole recording means iOS delivered silence (a dead input), not quiet speech. */
+const DEAD_INPUT_RMS = 0.002
+
+// iOS can hand an AudioContext created before the microphone opened a silent input, so a fresh
+// context is made after getUserMedia for every recording.
+const newAudioContext = () => {
+  const C = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+  return new C()
 }
 
 export const canRecord = () => !!navigator.mediaDevices?.getUserMedia && !!(window.AudioContext ?? (window as unknown as { webkitAudioContext?: unknown }).webkitAudioContext)
@@ -108,6 +109,8 @@ export function useAzureDictation(opts: {
   optsRef.current = opts
   const live = useRef<{
     stream: MediaStream
+    ctx: AudioContext
+    peak: number
     node: ScriptProcessorNode
     source: MediaStreamAudioSourceNode
     chunks: Float32Array[]
@@ -145,6 +148,7 @@ export function useAzureDictation(opts: {
     l.source.disconnect()
     l.node.onaudioprocess = null
     l.stream.getTracks().forEach((tr) => tr.stop())
+    void l.ctx.close().catch(() => {})
     setListening(false)
     return l
   }
@@ -152,6 +156,10 @@ export function useAzureDictation(opts: {
   const finish = useCallback(async (paused: boolean) => {
     const l = teardown()
     if (!l) return
+    if (l.peak < DEAD_INPUT_RMS && !parts.current.length) {
+      setError(t('errNoAudio'))
+      return
+    }
     sendChunk(l.chunks, l.rate)
     const text = await compose()
     optsRef.current.onText(text)
@@ -167,12 +175,12 @@ export function useAzureDictation(opts: {
       base.current = current ? current.replace(/\s*$/, ' ') : ''
       parts.current = []
       try {
-        const ctx = audioContext()
-        if (ctx.state === 'suspended') await ctx.resume()
         const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } })
+        const ctx = newAudioContext()
+        if (ctx.state !== 'running') await ctx.resume().catch(() => {})
         const source = ctx.createMediaStreamSource(stream)
         const node = ctx.createScriptProcessor(4096, 1, 1)
-        const state = { stream, node, source, chunks: [] as Float32Array[], seconds: 0, rate: ctx.sampleRate, heardSpeech: false, silentMs: 0 }
+        const state = { stream, ctx, peak: 0, node, source, chunks: [] as Float32Array[], seconds: 0, rate: ctx.sampleRate, heardSpeech: false, silentMs: 0 }
         node.onaudioprocess = (e) => {
           const data = new Float32Array(e.inputBuffer.getChannelData(0))
           state.chunks.push(data)
@@ -181,6 +189,7 @@ export function useAzureDictation(opts: {
           let sum = 0
           for (let i = 0; i < data.length; i += 4) sum += data[i] * data[i]
           const rms = Math.sqrt(sum / (data.length / 4))
+          state.peak = Math.max(state.peak, rms)
           if (rms > SPEECH_RMS) {
             state.heardSpeech = true
             state.silentMs = 0

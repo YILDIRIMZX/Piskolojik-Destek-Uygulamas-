@@ -23,6 +23,7 @@ import { locale, t, useLang, type Key } from '../lib/i18n'
 import { update, useV } from '../lib/store'
 import { TOOL_KINDS, featuredTools, toolSettings } from '../lib/tools'
 import { uid, type BreathVariant, type ToolKind, type ToolSettings } from '../lib/types'
+import { useWakeLock } from '../lib/wakeLock'
 import { useNav } from '../nav'
 
 export const TOOL_ICONS: Record<ToolKind, Icon> = {
@@ -79,6 +80,8 @@ function Saved({ onDone }: { onDone: () => void }) {
 }
 
 export function ToolScreen({ kind }: { kind: ToolKind }) {
+  // Exercises like breathing or urge surfing are watched without touching the screen; keep it on.
+  useWakeLock(true)
   switch (kind) {
     case 'beneath':
       return <Beneath />

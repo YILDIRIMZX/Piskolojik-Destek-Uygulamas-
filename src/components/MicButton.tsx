@@ -3,6 +3,7 @@ import { useState, type RefObject } from 'react'
 import { useSpeechInput } from '../lib/dictation'
 import { t } from '../lib/i18n'
 import { useV } from '../lib/store'
+import { useWakeLock } from '../lib/wakeLock'
 import { cx } from './ui'
 
 /**
@@ -23,6 +24,7 @@ export function MicButton({
   const v = useV()
   const d = useSpeechInput(v.settings, { onText: onChange })
   const [hint, setHint] = useState(false)
+  useWakeLock(d.listening || d.transcribing)
 
   const onClick = () => {
     if (!d.supported) {

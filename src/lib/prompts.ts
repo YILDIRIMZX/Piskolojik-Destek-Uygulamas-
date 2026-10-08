@@ -234,7 +234,7 @@ Araç türleri:
 ${TOOL_CATALOG}
 
 Mevcut ayar: ${config}
-Kurallar: Adları danışanın diliyle ve durumuna göre koy ama aracın işlevi anlaşılır kalsın. "title" en fazla 28, "subtitle" en fazla 90, "why" en fazla 160 karakter. "why", danışana bu aracı neden önerdiğini tek cümleyle anlatır. Tıbbi tanı ifadeleri kullanma.`,
+Kurallar: Adları danışanın diliyle ve durumuna göre koy ama aracın işlevi anlaşılır kalsın. "title" kısa bir ad olmalı: EN FAZLA 24 karakter ve 4 kelime (uzunsa reddedilir ve varsayılan ad kullanılır, bu yüzden kısa ve tam bir ifade seç; cümle değil, ad). "subtitle" en fazla 90, "why" en fazla 160 karakter. "why", danışana bu aracı neden önerdiğini tek cümleyle anlatır. Tıbbi tanı ifadeleri kullanma.`,
   en: (config) => `<araclar>
 The client's tool settings in the app. If what you learned in this session calls for a change, write ONLY valid JSON:
 {"featured": [up to 5 tool kinds to feature on the home screen], "tools": {"<kind>": {"title": "...", "subtitle": "...", "why": "...", ...params}}}
@@ -245,7 +245,7 @@ Tool kinds:
 ${TOOL_CATALOG}
 
 Current settings: ${config}
-Rules: name tools in the client's own words and situation while keeping their function clear. "title" up to 28, "subtitle" up to 90, "why" up to 160 characters. "why" tells the client in one sentence why you suggest the tool. Don't use diagnostic labels.`,
+Rules: name tools in the client's own words and situation while keeping their function clear. "title" must be a short name: AT MOST 24 characters and 4 words (longer titles are rejected and the default name is used, so pick a short, complete phrase, a name rather than a sentence). "subtitle" up to 90, "why" up to 160 characters. "why" tells the client in one sentence why you suggest the tool. Don't use diagnostic labels.`,
 }
 
 export const reportInstruction = (lang: Lang, no: number, date: string, minutes: number, tools?: ToolConfig) =>

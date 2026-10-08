@@ -91,6 +91,26 @@ export const TOOL_CATALOG = `- moment: structured log of a hard moment (CBT thou
 - urge: urge surfing for impulses (outbursts, cravings, avoidance): rate the urge, ride it out over a few minutes, rate again. Params: urgeName (what the urge is, short lowercase noun phrase), minutes (2-5).`
 
 const cap = (s: unknown, n: number) => (typeof s === 'string' ? s.trim().slice(0, n) : undefined)
+
+export const TITLE_MAX = 24
+export const TITLE_MAX_WORDS = 4
+
+/** Titles are never cut: a title that breaks the limits is rejected and the default name is used. */
+export const validTitle = (s: unknown): string | undefined => {
+  if (typeof s !== 'string') return undefined
+  const v = s.trim().replace(/\s+/g, ' ')
+  return v && v.length <= TITLE_MAX && v.split(' ').length <= TITLE_MAX_WORDS ? v : undefined
+}
+
+/** Longer texts are shortened at a word boundary with an ellipsis, never mid-word. */
+const capWords = (s: unknown, n: number) => {
+  if (typeof s !== 'string') return undefined
+  const v = s.trim().replace(/\s+/g, ' ')
+  if (v.length <= n) return v || undefined
+  const cut = v.slice(0, n - 1)
+  const at = cut.lastIndexOf(' ')
+  return `${(at > n / 2 ? cut.slice(0, at) : cut).replace(/[\s,;:.-]+$/, '')}…`
+}
 const capList = (a: unknown, max: number, len: number) =>
   Array.isArray(a) ? a.map((x) => cap(x, len)).filter((x): x is string => !!x).slice(0, max) : undefined
 
@@ -112,9 +132,9 @@ export function sanitizeToolConfig(raw: unknown): ToolConfigPatch | null {
     const t = r.tools?.[kind]
     if (!t || typeof t !== 'object') continue
     const s: Partial<ToolSettings> = {}
-    const title = cap(t.title, 28)
-    const subtitle = cap(t.subtitle, 90)
-    const why = cap(t.why, 160)
+    const title = validTitle(t.title)
+    const subtitle = capWords(t.subtitle, 90)
+    const why = capWords(t.why, 160)
     if (title) s.title = title
     if (subtitle) s.subtitle = subtitle
     if (why) s.why = why
@@ -167,7 +187,11 @@ export const fullToolConfig = (patch: ToolConfigPatch): ToolConfig => mergeToolC
 
 /** A tool's settings: counselor overrides on top of the language defaults. */
 export function toolSettings(config: ToolConfig | undefined, kind: ToolKind, lang: Lang): ToolSettings {
-  return { ...DEFAULTS[lang][kind], ...(config?.tools[kind] ?? {}) }
+  const custom = config?.tools[kind] ?? {}
+  const s = { ...DEFAULTS[lang][kind], ...custom }
+  // Titles saved by older versions could be cut mid-word; those fall back to the default name.
+  if (custom.title && !validTitle(custom.title)) s.title = DEFAULTS[lang][kind].title
+  return s
 }
 
 export const featuredTools = (config: ToolConfig | undefined): ToolKind[] => config?.featured ?? DEFAULT_FEATURED
