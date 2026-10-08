@@ -6,6 +6,12 @@ Her güncelleme, neyin neden değiştiğiyle birlikte burada listelenir. En yeni
 
 ---
 
+## 2.1.2 (2026-10-08)
+
+**EN.** The 24-character title limit was too tight: the counselor squeezed names into vague fragments ("Öfkenin altı", "Gitme dürtüsü") that no longer said what the tool does. Titles may now be 2-6 words and up to 36 characters, the counselor is told to write a name that explains the tool on its own (with good and bad examples), and long titles wrap to two lines in lists. Titles cut by version 1 are still detected and replaced.
+
+**TR.** 24 karakterlik başlık sınırı fazla darmış: danışman adları ne işe yaradığı anlaşılmayan parçalara sıkıştırıyordu ("Öfkenin altı", "Gitme dürtüsü"). Başlıklar artık 2-6 kelime ve en fazla 36 karakter olabiliyor. Danışmana, aracın ne işe yaradığını tek başına anlatan bir ad yazması söyleniyor (iyi ve kötü örneklerle). Uzun başlıklar listelerde iki satıra sarılıyor. 1. sürümün kestiği başlıklar hâlâ yakalanıp değiştiriliyor.
+
 ## 2.1.1 (2026-10-08)
 
 **EN.** "Personalize" now starts from scratch. It used to send the current tool names to the counselor, and an old cut-off title ("…Değil, Dos") was shortened again instead of being fixed. The counselor no longer sees the old names during personalization and is told never to abbreviate or cut words, and to repair any cut-off word it finds.

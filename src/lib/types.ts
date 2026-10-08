@@ -64,6 +64,8 @@ export interface ToolConfig {
   featured: ToolKind[]
   tools: Partial<Record<ToolKind, Partial<ToolSettings>>>
   updatedAt: number
+  /** 2 = titles validated with the current rules (older configs could hold titles cut at 28 characters). */
+  v?: number
 }
 
 /** Entries saved by tools other than the moment log (thought checks, scripts, values, urges). */
