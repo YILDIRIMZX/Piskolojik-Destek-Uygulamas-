@@ -10,7 +10,7 @@
 
 [English](README.md) · [Türkçe](README.tr.md) · **Русский**
 
-![Версия](https://img.shields.io/badge/версия-2.1-2c6a5d)
+![Версия](https://img.shields.io/badge/версия-2.1.1-2c6a5d)
 ![React](https://img.shields.io/badge/React-19.3-149eca)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178c6)
 ![Vite](https://img.shields.io/badge/Vite-8.3-646cff)
