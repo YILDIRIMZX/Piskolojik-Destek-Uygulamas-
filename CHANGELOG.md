@@ -6,6 +6,12 @@ Her güncelleme, neyin neden değiştiğiyle birlikte burada listelenir. En yeni
 
 ---
 
+## 2.1.5 (2026-10-11)
+
+**EN.** Documentation only. The companion app Akşam Notu no longer has a computer trigger; its description now says that the reminder comes to the phone every evening after 22:00.
+
+**TR.** Yalnızca belgeler. Yardımcı uygulama Akşam Notu'nun artık bilgisayar tetikleyicisi yok; tanımı, hatırlatmanın her akşam 22:00'den sonra telefona geldiğini söylüyor.
+
 ## 2.1.4 (2026-10-08)
 
 **EN.** Documentation only. The description of the companion app Akşam Notu no longer mentions where the idea came from, so the public repository stays free of personal details.
