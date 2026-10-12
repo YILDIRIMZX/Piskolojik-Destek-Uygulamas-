@@ -5,6 +5,7 @@ import {
   CYCLE_INSTRUCTION,
   CYCLE_SYSTEM,
   OPENING,
+  cuesTag,
   PERSONALIZE_SYSTEM,
   buildSystemPrompt,
   closingInstruction,
@@ -59,6 +60,20 @@ export function createSession(): string {
   return s.id
 }
 
+/**
+ * How much of an absence counts toward the 50-minute session clock: the app was in the background,
+ * the screen was off, or the phone was put down. `gapMs` is the time since the clock last ran.
+ */
+export function countedAbsence(gapMs: number): number {
+  const min = 60_000
+  // Brackets, like income tax: each rate applies only to the part of the gap inside its bracket,
+  // so a longer absence never counts less than a shorter one.
+  const first = Math.min(gapMs, 5 * min) / 1.5 // first 5 min
+  const second = Math.min(Math.max(gapMs - 5 * min, 0), 25 * min) / 2.5 // 5-30 min
+  const third = Math.min(Math.max(gapMs - 30 * min, 0), 30 * min) / 3.5 // 30-60 min
+  return Math.min(first + second + third, 20 * min)
+}
+
 export function addActiveTime(id: string, ms: number) {
   patchSession(id, (s) => ({ ...s, activeMs: s.activeMs + ms }))
 }
@@ -70,7 +85,7 @@ export function addActiveTime(id: string, ms: number) {
 export async function send(
   id: string,
   text: string,
-  opts: { hidden?: boolean; onText?: (t: string) => void; signal?: AbortSignal } = {},
+  opts: { hidden?: boolean; cues?: string; onText?: (t: string) => void; signal?: AbortSignal } = {},
 ) {
   const s = sessionById(id)
   const v = getVault()
@@ -79,7 +94,7 @@ export async function send(
     id: uid(),
     role: 'user',
     text,
-    apiText: text + timeTag(remainingMinutes(s), langOf(s)),
+    apiText: text + cuesTag(opts.cues ?? '') + timeTag(remainingMinutes(s), langOf(s)),
     ts: Date.now(),
     hidden: opts.hidden,
   }

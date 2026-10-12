@@ -506,6 +506,8 @@ const tr = {
   transcribing: 'Yazıya dökülüyor…',
   azureGroup: 'Azure Speech',
   azureShared: 'Aynı anahtar hem doğal ses hem de konuşma tanıma için kullanılır.',
+  voiceCuesToggle: 'Ses tonundan ipucu',
+  voiceCuesHint: 'Konuşma hızın, ses yüksekliğin, tonun ve duraklamaların telefonda ölçülür; danışmana sadece kendi ortalamana göre kısa bir not gider ("her zamankinden yavaş, tekdüze" gibi). Ses gönderilmez.',
 
   // Review tools tab
   tabTools: 'Araçlar',
@@ -954,6 +956,8 @@ const en: Record<Key, string> = {
   transcribing: 'Transcribing…',
   azureGroup: 'Azure Speech',
   azureShared: 'The same key is used for both the natural voice and speech recognition.',
+  voiceCuesToggle: 'Voice-tone cues',
+  voiceCuesHint: 'Your speaking rate, loudness, pitch and pauses are measured on the phone; the counselor only gets a short note relative to your own average (like "slower than usual, flat"). No audio is sent.',
 
   tabTools: 'Tools',
   toolsChanges: 'Your counselor suggests these changes to your tools:',

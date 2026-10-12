@@ -3,6 +3,7 @@
 // recognizer is unreliable. Long speech is split into chunks under the 60 s limit.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { speechLang, t } from './i18n'
+import { analyze, type VoiceCues } from './prosody'
 
 const TARGET_RATE = 16000
 const CHUNK_SECONDS = 45
@@ -98,6 +99,8 @@ export async function transcribe(audio: Blob, key: string, region: string): Prom
 export function useAzureDictation(opts: {
   onText: (text: string) => void
   onPause?: (text: string) => void
+  /** Voice cues for the finished recording, measured on the device. */
+  onCues?: (cues: VoiceCues) => void
   autoSendAfterMs?: number
   enabled: boolean
   creds: { key: string; region: string } | null
@@ -121,6 +124,7 @@ export function useAzureDictation(opts: {
   } | null>(null)
   const base = useRef('')
   const parts = useRef<Promise<string>[]>([])
+  const pcmParts = useRef<Int16Array[]>([])
 
   const compose = async () => {
     const texts = await Promise.all(parts.current)
@@ -130,7 +134,9 @@ export function useAzureDictation(opts: {
   const sendChunk = (chunks: Float32Array[], rate: number) => {
     const c = optsRef.current.creds
     if (!c || !chunks.length) return
-    const p = transcribe(wav(downsample(chunks, rate)), c.key, c.region).catch((e: unknown) => {
+    const pcm = downsample(chunks, rate)
+    pcmParts.current.push(pcm)
+    const p = transcribe(wav(pcm), c.key, c.region).catch((e: unknown) => {
       setError(e instanceof SttError ? e.message : t('errNotUnderstood'))
       return ''
     })
@@ -163,6 +169,20 @@ export function useAzureDictation(opts: {
     sendChunk(l.chunks, l.rate)
     const text = await compose()
     optsRef.current.onText(text)
+    if (optsRef.current.onCues) {
+      const total = pcmParts.current.reduce((n, x) => n + x.length, 0)
+      const all = new Int16Array(total)
+      let o = 0
+      for (const x of pcmParts.current) {
+        all.set(x, o)
+        o += x.length
+      }
+      const cues: VoiceCues = analyze(all)
+      const spoken = text.slice(base.current.trim().length).trim()
+      const words = spoken ? spoken.split(/\s+/).length : 0
+      if (words && cues.seconds > 2) cues.wpm = Math.round((words / cues.seconds) * 60)
+      optsRef.current.onCues(cues)
+    }
     if (paused) optsRef.current.onPause?.(text)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -174,6 +194,7 @@ export function useAzureDictation(opts: {
       setError(null)
       base.current = current ? current.replace(/\s*$/, ' ') : ''
       parts.current = []
+      pcmParts.current = []
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } })
         const ctx = newAudioContext()

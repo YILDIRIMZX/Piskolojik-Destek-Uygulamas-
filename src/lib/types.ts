@@ -1,3 +1,4 @@
+import type { VoiceBaseline } from './prosody'
 import { isIOSStandalone } from './speech'
 
 export type ModelId = 'claude-sonnet-5-5' | 'claude-opus-5-5'
@@ -121,6 +122,8 @@ export interface Settings {
   inAppSpeech: boolean
   /** Speech-to-text engine: system keyboard dictation, Safari's recognizer or Azure. */
   stt?: 'keyboard' | 'browser' | 'azure'
+  /** Send voice-tone cues (measured on the device) with spoken session messages. Default on. */
+  voiceCues?: boolean
   /** Chosen speech synthesis voice; empty means the best Turkish voice available. */
   voiceURI?: string
   /** Which engine reads replies aloud. */
@@ -148,6 +151,8 @@ export interface Vault {
   profile?: Profile
   /** The user chose to skip the personality test on first launch. */
   profileSkipped?: boolean
+  /** The speaker's own average voice, so cues describe changes rather than absolute values. */
+  voiceBaseline?: VoiceBaseline
 }
 
 export const sttEngine = (s: Settings): NonNullable<Settings['stt']> => s.stt ?? (s.inAppSpeech ? 'browser' : 'keyboard')

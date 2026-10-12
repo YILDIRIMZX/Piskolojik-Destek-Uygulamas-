@@ -127,6 +127,14 @@ export function Settings() {
           hint={canSpeak() ? undefined : t('noTtsDevice')}
         />
         <SttPicker />
+        {engine === 'azure' && (
+          <Toggle
+            checked={v.settings.voiceCues !== false}
+            onChange={(voiceCues) => setSettings({ voiceCues })}
+            label={t('voiceCuesToggle')}
+            hint={t('voiceCuesHint')}
+          />
+        )}
         {engine !== 'keyboard' && (
           <Toggle
             checked={v.settings.handsFree}

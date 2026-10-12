@@ -6,6 +6,16 @@ Her güncelleme, neyin neden değiştiğiyle birlikte burada listelenir. En yeni
 
 ---
 
+## 2.2.0 (2026-10-12)
+
+**EN.**
+- **Sessions keep to 50 minutes.** The clock used to count only time with the screen on, so a session could take two hours of real time and still be at minute 40. Absences now count partly, in brackets like income tax: the first 5 minutes at 1/1.5, the next 25 at 1/2.5, the next 30 at 1/3.5, at most 20 minutes per absence, so a longer break never counts less than a shorter one. The counselor is told to keep strictly to time, and the time note now says "wrap up" in the last 10 minutes and "close in this reply" when time is up.
+- **The counselor hears your tone (Azure speech recognition).** Speaking rate, loudness, pitch, intonation range and pauses are measured on the phone from the recording and compared with your own average. Only a short note such as "slower than usual, flat" goes to the counselor, which adjusts its pace and warmth and asks gently when voice and words don't match. No audio is sent for this, and it can be turned off (Settings > Voice > Voice-tone cues).
+
+**TR.**
+- **Seanslar 50 dakikaya uyuyor.** Sayaç önceden sadece ekran açıkken işliyordu; seans gerçekte iki saat sürüp hâlâ 40. dakikada olabiliyordu. Aralar artık kısmen sayılıyor, gelir vergisi dilimleri gibi: ilk 5 dakika 1/1,5, sonraki 25 dakika 1/2,5, sonraki 30 dakika 1/3,5 oranında, bir ara en fazla 20 dakika; böylece daha uzun bir ara hiçbir zaman daha az sayılmıyor. Danışmana süreye sıkı uyması söyleniyor; son 10 dakikada süre notu "toparla", süre dolunca "bu cevapta kapat" diyor.
+- **Danışman ses tonunu duyuyor (Azure konuşma tanıma).** Konuşma hızı, ses yüksekliği, perde, ton aralığı ve duraklamalar kayıttan telefonda ölçülüp senin kendi ortalamanla karşılaştırılıyor. Danışmana sadece "her zamankinden yavaş, tekdüze" gibi kısa bir not gidiyor; danışman temposunu ve sıcaklığını buna göre ayarlıyor, ses ile sözler uyuşmazsa nazikçe soruyor. Bunun için ses gönderilmiyor ve kapatılabiliyor (Ayarlar > Ses > Ses tonundan ipucu).
+
 ## 2.1.5 (2026-10-11)
 
 **EN.** Documentation only. The companion app Akşam Notu no longer has a computer trigger; its description now says that the reminder comes to the phone every evening after 22:00.

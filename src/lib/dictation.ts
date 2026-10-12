@@ -1,4 +1,5 @@
 import { useDictation } from './speech'
+import type { VoiceCues } from './prosody'
 import { useAzureDictation } from './stt'
 import { sttEngine, type Settings } from './types'
 
@@ -8,7 +9,7 @@ import { sttEngine, type Settings } from './types'
  */
 export function useSpeechInput(
   settings: Settings,
-  opts: { onText: (text: string) => void; onPause?: (text: string) => void; autoSendAfterMs?: number },
+  opts: { onText: (text: string) => void; onPause?: (text: string) => void; onCues?: (cues: VoiceCues) => void; autoSendAfterMs?: number },
 ) {
   const engine = sttEngine(settings)
   const creds = settings.azureKey && settings.azureRegion ? { key: settings.azureKey, region: settings.azureRegion } : null

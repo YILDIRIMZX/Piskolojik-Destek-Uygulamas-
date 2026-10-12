@@ -6,13 +6,15 @@ import { Button, Sheet, cx } from '../components/ui'
 import { describeError } from '../lib/claude'
 import { renderMarkdown } from '../lib/markdown'
 import { useSpeechInput } from '../lib/dictation'
+import { getLang } from '../lib/i18n'
+import { describeCues, updateBaseline, type VoiceCues } from '../lib/prosody'
 import { useWakeLock } from '../lib/wakeLock'
 import { canSpeak } from '../lib/speech'
 import { azureReady, primeAudio, say, stopAll } from '../lib/voice'
 import { flush, update, useV } from '../lib/store'
 import { useNav } from '../nav'
 import { fmtUsd } from './Sessions'
-import { addActiveTime, close, generateReport, remainingMinutes, reply, send, start } from './sessionLogic'
+import { addActiveTime, close, countedAbsence, generateReport, remainingMinutes, reply, send, start } from './sessionLogic'
 import { t } from '../lib/i18n'
 
 const TICK_MS = 5000
@@ -41,24 +43,32 @@ export function SessionChat({ id }: { id: string }) {
   useEffect(() => {
     if (!s || s.status !== 'active') return
     let last = Date.now()
-    const t = setInterval(() => {
-      if (document.visibilityState !== 'visible') {
-        last = Date.now()
-        return
-      }
+    const tick = () => {
+      if (document.visibilityState !== 'visible') return
       const now = Date.now()
-      addActiveTime(id, now - last)
+      const gap = now - last
+      addActiveTime(id, gap <= TICK_MS * 3 ? gap : countedAbsence(gap))
       last = now
-    }, TICK_MS)
-    return () => clearInterval(t)
+    }
+    const t = setInterval(tick, TICK_MS)
+    document.addEventListener('visibilitychange', tick)
+    return () => {
+      clearInterval(t)
+      document.removeEventListener('visibilitychange', tick)
+    }
   }, [id, s?.status]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const scrollDown = useCallback(() => {
     requestAnimationFrame(() => scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: reduce ? 'auto' : 'smooth' }))
   }, [reduce])
 
+  // Voice cues from the last recording; sent with the next message, then cleared.
+  const cuesRef = useRef<VoiceCues | null>(null)
   const dictation = useSpeechInput(v.settings, {
     onText: setDraft,
+    onCues: (c) => {
+      if (v.settings.voiceCues !== false) cuesRef.current = c
+    },
     autoSendAfterMs: handsFree ? 2200 : undefined,
     onPause: (text) => {
       if (text.trim()) void submit(text)
@@ -121,7 +131,11 @@ export function SessionChat({ id }: { id: string }) {
     stopAll()
     primeAudio()
     setDraft('')
-    await run((onText, signal) => send(id, t, { onText, signal }))
+    const c = cuesRef.current
+    cuesRef.current = null
+    const cues = c ? describeCues(c, v.voiceBaseline, s?.lang ?? getLang()) : ''
+    if (c) update((x) => ({ ...x, voiceBaseline: updateBaseline(x.voiceBaseline, c) }))
+    await run((onText, signal) => send(id, t, { cues, onText, signal }))
   }
 
   const retry = () => {
